@@ -124,7 +124,7 @@ export function createSyntheticSourcePosRecalcPlugin(
   return {
     name: 'synthetic-source-pos-recalc',
     order: { transform: options.order ?? 22 },
-    async transform(ctx): Promise<void> {
+    async transform(ctx: { document: Document; level: number }): Promise<void> {
       const defaultFile = `memory://spectotal-ast/${ctx.document.id}.ast`;
       const file = options.fileForDocument?.(ctx.document, ctx.level) ?? defaultFile;
       recalculateDocumentSourcePos(ctx.document, file);

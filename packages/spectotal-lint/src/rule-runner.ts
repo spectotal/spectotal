@@ -13,7 +13,7 @@ import type {
 
 export function inferDocumentLevels(workspace: Workspace): Map<string, number> {
   const levels = new Map<string, number>();
-  workspace.documents.forEach((document, index) => {
+  workspace.documents.forEach((document: Workspace['documents'][number], index: number) => {
     const file = document.sourcePos?.file;
     if (!file) return;
     levels.set(file, index);

@@ -12,16 +12,16 @@ export class SpectotalProfileRegistry {
     return this;
   }
 
-  get(profileId: string): SpectotalProfile | undefined {
-    return this.profiles.get(profileId);
+  get<TProfile extends SpectotalProfile = SpectotalProfile>(profileId: string): TProfile | undefined {
+    return this.profiles.get(profileId) as TProfile | undefined;
   }
 
-  require(profileId: string): SpectotalProfile {
+  require<TProfile extends SpectotalProfile = SpectotalProfile>(profileId: string): TProfile {
     const profile = this.profiles.get(profileId);
     if (!profile) {
       throw new Error(`Unknown profile "${profileId}".`);
     }
-    return profile;
+    return profile as TProfile;
   }
 
   list(): SpectotalProfile[] {

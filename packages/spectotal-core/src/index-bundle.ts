@@ -1,8 +1,9 @@
-import type { Document, Workspace } from '@openuji/speculator';
 import type {
+  Document,
   IndexBundle,
   IndexBundleDocument,
   StructuralWorkspaceAst,
+  Workspace,
 } from './types.js';
 
 function cloneValue<T>(value: T): T {
@@ -19,7 +20,10 @@ function documentSort(left: IndexBundleDocument, right: IndexBundleDocument): nu
   return (left.sourceFile ?? '').localeCompare(right.sourceFile ?? '');
 }
 
-export function createIndexBundle(workspace: Workspace, profileId: string): IndexBundle {
+export function createIndexBundle<TWorkspace extends Workspace>(
+  workspace: TWorkspace,
+  profileId: string,
+): IndexBundle<TWorkspace> {
   const documents = workspace.documents
     .map((document) => ({
       documentId: document.id,
@@ -27,7 +31,7 @@ export function createIndexBundle(workspace: Workspace, profileId: string): Inde
       indexes: document.indexes ? cloneValue(document.indexes) : undefined,
       computed: document.computed ? cloneValue(document.computed) : undefined,
     }))
-    .sort(documentSort);
+    .sort(documentSort) as Array<IndexBundleDocument<TWorkspace['documents'][number]>>;
 
   return {
     schemaVersion: '1.0.0',
@@ -37,8 +41,10 @@ export function createIndexBundle(workspace: Workspace, profileId: string): Inde
   };
 }
 
-export function stripDerivedWorkspaceAst(workspace: Workspace): StructuralWorkspaceAst {
-  const clonedWorkspace = cloneValue(workspace);
+export function stripDerivedWorkspaceAst<TWorkspace extends Workspace>(
+  workspace: TWorkspace,
+): StructuralWorkspaceAst<TWorkspace> {
+  const clonedWorkspace = cloneValue(workspace) as Workspace;
   delete clonedWorkspace.globalIndex;
 
   for (const document of clonedWorkspace.documents) {
@@ -46,14 +52,14 @@ export function stripDerivedWorkspaceAst(workspace: Workspace): StructuralWorksp
     delete document.computed;
   }
 
-  return clonedWorkspace as StructuralWorkspaceAst;
+  return clonedWorkspace as unknown as StructuralWorkspaceAst<TWorkspace>;
 }
 
-export function hydrateWorkspaceFromIndexBundle(
-  workspaceAst: StructuralWorkspaceAst,
-  indexBundle: IndexBundle,
-): Workspace {
-  const hydratedWorkspace = cloneValue(workspaceAst) as Workspace;
+export function hydrateWorkspaceFromIndexBundle<TWorkspace extends Workspace>(
+  workspaceAst: StructuralWorkspaceAst<TWorkspace>,
+  indexBundle: IndexBundle<TWorkspace>,
+): TWorkspace {
+  const hydratedWorkspace = cloneValue(workspaceAst) as unknown as Workspace;
   const indexById = new Map(indexBundle.documents.map((entry) => [entry.documentId, entry]));
 
   for (const document of hydratedWorkspace.documents as Document[]) {
@@ -72,5 +78,5 @@ export function hydrateWorkspaceFromIndexBundle(
     hydratedWorkspace.globalIndex = cloneValue(indexBundle.globalIndex);
   }
 
-  return hydratedWorkspace;
+  return hydratedWorkspace as TWorkspace;
 }

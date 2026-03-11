@@ -24,9 +24,6 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@openuji/speculator": "workspace:*"
-  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",

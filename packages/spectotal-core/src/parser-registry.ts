@@ -1,22 +1,21 @@
-import type { ProfileParserRegistry as IProfileParserRegistry } from './types.js';
+import type {
+  Document,
+  ProfileParser,
+  ProfileParserRegistry as IProfileParserRegistry,
+  SpecConfig,
+} from './types.js';
 
-export class ProfileParserRegistry implements IProfileParserRegistry {
-  private readonly htmlParsersList: unknown[] = [];
-  private readonly markdownParsersList: unknown[] = [];
+export class ProfileParserRegistry<
+  TDocument extends Document = Document,
+  TConfig extends SpecConfig = SpecConfig,
+> implements IProfileParserRegistry<TDocument, TConfig> {
+  private readonly parsersList: Array<ProfileParser<TDocument, TConfig>> = [];
 
-  registerHtmlParser(parser: unknown): void {
-    this.htmlParsersList.push(parser);
+  registerParser(parser: ProfileParser<TDocument, TConfig>): void {
+    this.parsersList.push(parser);
   }
 
-  registerMarkdownParser(parser: unknown): void {
-    this.markdownParsersList.push(parser);
-  }
-
-  get htmlParsers(): readonly unknown[] {
-    return this.htmlParsersList;
-  }
-
-  get markdownParsers(): readonly unknown[] {
-    return this.markdownParsersList;
+  get parsers(): readonly ProfileParser<TDocument, TConfig>[] {
+    return this.parsersList;
   }
 }
