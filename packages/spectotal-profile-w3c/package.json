@@ -1,0 +1,66 @@
+{
+  "name": "@spectotal/profile-w3c",
+  "version": "0.1.0",
+  "description": "W3C/ReSpec profile implementation for Spectotal",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./lint": {
+      "types": "./dist/lint/index.d.ts",
+      "import": "./dist/lint/index.js"
+    },
+    "./patch": {
+      "types": "./dist/patch/index.d.ts",
+      "import": "./dist/patch/index.js"
+    }
+  },
+  "imports": {
+    "#src/*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepack": "pnpm build",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@spectotal/ast-patch": "workspace:*",
+    "@spectotal/core": "workspace:*",
+    "@spectotal/lint": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "spectotal",
+    "w3c",
+    "respec",
+    "profile"
+  ],
+  "license": "MIT",
+  "lint-staged": {
+    "src/**/!(*.generated).ts": [
+      "eslint --fix --max-warnings 0",
+      "bash -c 'pnpm typecheck'",
+      "bash -c 'pnpm test --run'"
+    ]
+  }
+}

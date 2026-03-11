@@ -1,0 +1,359 @@
+/**
+ * Preprocess Stage Types
+ * 
+ * Types for spec configuration loading and file composition before parsing.
+ */
+
+import type { SourcePos } from '#src/types/ast.generated';
+
+// ============================================================================
+// Source Format
+// ============================================================================
+
+/**
+ * Supported input formats for spec files
+ */
+export type SourceFormat = 'markdown' | 'html';
+
+/**
+ * Infer format from file extension
+ */
+export function inferFormat(path: string): SourceFormat {
+    const ext = path.split('.').pop()?.toLowerCase();
+    if (ext === 'html' || ext === 'htm') {
+        return 'html';
+    }
+    return 'markdown';
+}
+
+// ============================================================================
+// Include Directives
+// ============================================================================
+
+/**
+ * A parsed include directive from source content
+ */
+export interface IncludeDirective {
+    /** Relative path as written in source (e.g., "./intro.md") */
+    relativePath: string;
+
+    /** Explicit format if specified, otherwise inferred from extension */
+    format?: SourceFormat;
+
+    /** Position of the directive in source */
+    sourcePos: SourcePos;
+
+    /** Start offset in content (for splitting) */
+    startOffset: number;
+
+    /** End offset in content (for splitting) */
+    endOffset: number;
+}
+
+// ============================================================================
+// Source Units
+// ============================================================================
+
+/**
+ * A unit of source content with its origin file
+ * 
+ * The preprocess stage splits content at include points to preserve
+ * sourcePos.file for each fragment. This enables accurate error reporting
+ * that points to the correct file.
+/**
+ * A fragment of the composed source mapping back to its origin file
+ */
+export interface SourceMapFragment {
+    /** 0-indexed start offset in the final composed string */
+    startOffset: number;
+
+    /** 0-indexed end offset in the final composed string (exclusive) */
+    endOffset: number;
+
+    /** Canonical file path from which this fragment originated */
+    file: string;
+
+    /** Content format of this file */
+    format: SourceFormat;
+
+    /** 
+     * Display-friendly file path for error messages
+     * (e.g., relative to spec root)
+     */
+    displayFile?: string;
+
+    /**
+     * 1-indexed line number where this fragment's content starts in its origin file.
+     * Used to compute accurate sourcePos for parsed AST nodes.
+     */
+    originalStartLine: number;
+
+    /**
+     * Pre-read sibling files keyed by canonical path.
+     * 
+     * Populated by the preprocess stage for files relevant to the parser
+     * (e.g. `.ttl`, `.jsonld` vocabulary files next to the source file).
+     */
+    sideFiles?: Record<string, string>;
+}
+
+/**
+ * Maps locations in the composed output string back to original source files.
+ */
+export interface SourceMap {
+    fragments: SourceMapFragment[];
+}
+
+// ============================================================================
+// Include Graph
+// ============================================================================
+
+/**
+ * Edge in the include graph
+ */
+export interface IncludeEdge {
+    /** Canonical path of included file */
+    target: string;
+
+    /** Position where include occurred */
+    sourcePos: SourcePos;
+}
+
+/**
+ * Include graph tracking parent→children relationships
+ * Maps canonical file path to list of includes from that file
+ */
+export type IncludeGraph = Map<string, IncludeEdge[]>;
+
+// ============================================================================
+// Composite Source
+// ============================================================================
+
+/**
+ * Composed source document from entry file and includes
+ * 
+ * The units array is ordered by document flow - includes are expanded
+ * in-place where they appear in the source.
+ */
+export interface CompositeSource {
+    /** Canonical path of entry file */
+    entryFile: string;
+
+    /** Format of entry file */
+    entryFormat: SourceFormat;
+
+    /** 
+     * The fully composed content string with all includes resolved.
+     */
+    content: string;
+
+    /**
+     * Source map for tracing the composed string back to original files.
+     */
+    sourceMap: SourceMap;
+
+    /** Include relationship graph */
+    includeGraph: IncludeGraph;
+}
+
+// ============================================================================
+// Spec Configuration
+// ============================================================================
+
+/**
+ * Maturity level for specifications
+ * Takes priority over respec.specStatus when set at root level
+ */
+export type MaturityLevel = 'incubating' | 'draft' | 'prerelease' | 'stable';
+
+/**
+ * Person entry for editors/authors
+ */
+export interface PersonEntry {
+    name: string;
+    url?: string;
+    company?: string;
+    companyURL?: string;
+    email?: string;
+    /** Optional note about the person's role (e.g., "Main Editor") */
+    note?: string;
+    /** W3C ID if applicable */
+    w3cid?: string;
+}
+
+/**
+ * Repository configuration
+ */
+export interface RepositoryConfig {
+    /** Repository URL (e.g., https://github.com/openuji/speculator) */
+    url: string;
+    /** Branch name (defaults to main) */
+    branch?: string;
+    /** Type of repository (auto-detected if omitted) */
+    type?: 'github' | 'gitlab' | 'manual';
+}
+
+/**
+ * Group configuration
+ */
+export interface GroupConfig {
+    /** Group name (e.g., "OpenUJI Working Group") */
+    name: string;
+    /** Group URL */
+    url?: string;
+}
+
+/**
+ * Normalized spec configuration
+ * 
+ * Internal representation derived from ReSpec-like config files.
+ * All optional fields have sensible defaults applied.
+ */
+export interface SpecConfig {
+    /** Document ID (from config.json or auto-generated) */
+    id: string;
+
+    /** Dependencies (empty array if none) */
+    deps: string[];
+
+    /** Document title */
+    title?: string;
+
+    /** Short name for URLs/references (e.g., "html", "css-grid") */
+    shortName?: string;
+
+    /** Subtitle or tagline */
+    subtitle?: string;
+
+    /** Spec status (e.g., "ED", "WD", "CR", "REC", "NOTE") - fallback if maturityLevel not set */
+    status?: string;
+
+    /** Maturity level (priority: root maturityLevel > respec.specStatus) */
+    maturityLevel?: MaturityLevel;
+
+    /** Publication date (ISO 8601: YYYY-MM-DD) */
+    publishDate?: string;
+
+    /** Original creation date (ISO 8601: YYYY-MM-DD) */
+    creationDate?: string;
+
+    /** Last update date (ISO 8601: YYYY-MM-DD) */
+    lastUpdateDate?: string;
+
+    /** Version string (e.g., "1.0.0") */
+    version?: string;
+
+    /** This version URL */
+    specIri: string;
+
+    /** Base URL for assembling thisVersion (e.g., https://example.org/specs/) */
+    baseUrl?: string;
+
+    /** Latest version URL */
+    latestVersion?: string;
+
+    /** Previous version URL */
+    previousVersion?: string;
+
+    /** Repository information */
+    repository?: RepositoryConfig | string;
+
+    /** Group/organization information */
+    group?: GroupConfig | string;
+
+    /** Editor list */
+    editors?: PersonEntry[];
+
+    /** Author list */
+    authors?: PersonEntry[];
+
+    /** Abstract text (if not in document body) */
+    abstract?: string;
+
+    /** Copyright notice */
+    copyright?: string;
+
+    /** License URL or identifier */
+    license?: string;
+
+    /** Header logo configuration */
+    logos?: Array<{ src: string; alt?: string; href?: string }>;
+
+    /** Enable table of contents generation */
+    tocEnabled?: boolean;
+
+    /** Maximum ToC depth */
+    maxTocLevel?: number;
+
+    /** Custom specification profile/variant */
+    specProfile?: string;
+
+    /** Local bibliography entries for citation resolution */
+    localBiblio?: Record<string, { 
+        title: string; 
+        url?: string;
+        authors?: string[];
+        date?: string;
+        publisher?: string;
+        status?: string;
+        raw?: string;
+    }>;
+
+    /** 
+     * Custom user-defined properties. 
+     * Highest priority - overwrites both root and respec values.
+     */
+    custom?: Record<string, unknown>;
+
+    /** JSON-LD metadata configuration */
+    jsonLd?: {
+        /** Base IRI for the specification vocabulary (default: https://speculator.openuji.org/vocab#) */
+        vocab?: string;
+        /** Standard contexts to include */
+        contexts?: Record<string, string>;
+    };
+
+    /** External reference configuration */
+    xref?: string | string[] | Record<string, string>;
+}
+
+// ============================================================================
+// Preprocessed Spec
+// ============================================================================
+
+/**
+ * Complete preprocessed specification ready for parsing
+ */
+export interface PreprocessedSpec {
+    /** Normalized configuration */
+    config: SpecConfig;
+
+    /** Composed source with includes resolved */
+    source: CompositeSource;
+
+    /** Non-fatal diagnostics encountered during preprocess */
+    diagnostics?: string[];
+}
+
+// ============================================================================
+// Workspace Configuration
+// ============================================================================
+
+/**
+ * Workspace entry point definition.
+ */
+export interface WorkspaceEntry {
+    /** Path to spec file (.md or .html) or folder containing index.md/html */
+    entry: string;
+    /** Optional path to specific config file */
+    configPath?: string;
+    /** Optional config overrides to merge with loaded config (highest priority) */
+    configOverrides?: Partial<SpecConfig>;
+}
+
+/**
+ * Workspace configuration mapping names to isolated specification entries.
+ * Used for dynamic workspace building in CLI and Astro.
+ * Each key represents a named, isolated workspace.
+ */
+export type WorkspaceEntryMap = Record<string, WorkspaceEntry[] | string>;

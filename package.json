@@ -1,0 +1,28 @@
+{
+  "name": "@spectotal/monorepo",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "build:packages": "pnpm -r --filter ./packages/** run build",
+    "ci:publish": "pnpm -r --filter './packages/**' publish --access public --provenance",
+    "changeset": "changeset",
+    "version-packages": "changeset version"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "lint-staged": "^16.2.7",
+    "typescript": "^5.0.0"
+  },
+  "pnpm": {
+    "allowedDeprecatedVersions": {
+      "eslint": "*",
+      "@humanwhocodes/config-array": "*",
+      "@humanwhocodes/object-schema": "*",
+      "@types/minimatch": "*",
+      "glob": "*",
+      "inflight": "*",
+      "rimraf": "*"
+    }
+  }
+}

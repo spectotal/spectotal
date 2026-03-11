@@ -1,0 +1,2152 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://speculator.dev/schema/spec-ast.schema.json",
+    "title": "Speculator AST Schema",
+    "version": "1.0.0",
+    "x-schema-version": "1.0.0",
+    "description": "AST-first schema for Speculator workspace. A workspace contains one or more specification documents. Semantic marker nodes are introduced during parse and may be refined during resolve. Global indexing aggregates definitions across documents.",
+    "type": "object",
+    "definitions": {
+        "NormativeLevel": {
+            "type": "string",
+            "enum": [
+                "MUST",
+                "MUST NOT",
+                "SHOULD",
+                "SHOULD NOT",
+                "MAY",
+                "NOTE",
+                "NONE",
+                "AMBIGUOUS"
+            ],
+            "description": "Canonical RFC 2119 / 8174 requirement level."
+        },
+        "NormativeKeyword": {
+            "type": "string",
+            "enum": [
+                "MUST",
+                "MUST NOT",
+                "REQUIRED",
+                "SHALL",
+                "SHALL NOT",
+                "SHOULD",
+                "SHOULD NOT",
+                "RECOMMENDED",
+                "MAY",
+                "OPTIONAL"
+            ],
+            "description": "RFC 2119 / 8174 keyword aliases."
+        },
+        "SourcePos": {
+            "type": "object",
+            "description": "Source position for bidirectional AST-to-source mapping",
+            "properties": {
+                "file": {
+                    "type": "string",
+                    "description": "Canonical file path (preserves include origins)"
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "1-indexed line number"
+                },
+                "column": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "1-indexed column number"
+                },
+                "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "0-indexed byte offset from file start"
+                },
+                "endLine": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "endColumn": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "endOffset": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "file",
+                "line",
+                "column"
+            ]
+        },
+        "BaseNode": {
+            "type": "object",
+            "properties": {
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            }
+        },
+        "HtmlAttributeValue": {
+            "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+            ]
+        },
+        "HtmlAttributes": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/HtmlAttributeValue"
+            }
+        },
+        "InlineText": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "text"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value"
+                    ]
+                }
+            ]
+        },
+        "InlineEmphasis": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "emphasis"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "InlineStrong": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "strong"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "InlineCode": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "inlineCode"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value"
+                    ]
+                }
+            ]
+        },
+        "InlineLink": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "link"
+                        },
+                        "url": {
+                            "type": "string"
+                        },
+                        "title": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "url",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "InlineImage": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "image"
+                        },
+                        "url": {
+                            "type": "string"
+                        },
+                        "alt": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "title": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "url"
+                    ]
+                }
+            ]
+        },
+        "InlineDefinition": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Inline definition marker (dfn). The term and children are parse-level requirements. The canonical id may be author-specified or assigned/refined during resolve. Indexed during the indexing phase.",
+                    "properties": {
+                        "type": {
+                            "const": "definition"
+                        },
+                        "explicitId": {
+                            "type": "string",
+                            "description": "Author-specified definition identifier, if provided."
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Canonical unique identifier for this definition. May be assigned/refined during resolve."
+                        },
+                        "term": {
+                            "type": "string",
+                            "description": "The term being defined (normalized)"
+                        },
+                        "linkTexts": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Alternative link texts from data-lt attribute. Parse fills from data-lt or [term]."
+                        },
+                        "forContexts": {
+                            "type": "array",
+                            "items": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "description": "For-contexts from data-dfn-for attribute (e.g., owning interface). Parse fills from data-dfn-for or [null]."
+                        },
+                        "dfnType": {
+                            "type": "string",
+                            "description": "Definition type from data-dfn-type (e.g., dfn, attribute, method). Defaults to 'dfn'."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "term",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "WorkspaceReferenceBase": {
+            "type": "object",
+            "properties": {
+                "targetTerm": { "type": "string" },
+                "candidateTerms": { "type": "array", "items": { "type": "string" } },
+                "forContexts": { "type": "array", "items": { "type": ["string", "null"] } },
+                "targetId": { "type": "string" },
+                "targetDocumentId": { "type": "string" },
+                "children": { "type": "array", "items": { "$ref": "#/definitions/Inline" } }
+            },
+            "required": ["targetTerm", "children"]
+        },
+        "ExternalReferenceBase": {
+            "type": "object",
+            "properties": {
+                "targetTerm": { "type": "string" },
+                "candidateTerms": { "type": "array", "items": { "type": "string" } },
+                "forContexts": { "type": "array", "items": { "type": ["string", "null"] } },
+                "xrefSpec": { "type": "string" },
+                "targetId": { "type": "string" },
+                "url": { "type": "string" },
+                "children": { "type": "array", "items": { "$ref": "#/definitions/Inline" } }
+            },
+            "required": ["targetTerm", "xrefSpec", "children"]
+        },
+
+        "InlineWorkspaceDfnReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/WorkspaceReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "workspaceDfnReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineWorkspaceIdlReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/WorkspaceReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "workspaceIdlReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineWorkspaceElementReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/WorkspaceReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "workspaceElementReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineExternalDfnReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/ExternalReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "externalDfnReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineExternalIdlReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/ExternalReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "externalIdlReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineExternalElementReference": {
+            "allOf": [
+                { "$ref": "#/definitions/BaseNode" },
+                { "$ref": "#/definitions/ExternalReferenceBase" },
+                { "type": "object", "properties": { "type": { "const": "externalElementReference" } }, "required": ["type"] }
+            ]
+        },
+        "InlineSectionReference": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Reference to a section by its ID. Resolved during post-processing to obtain section numbers/titles.",
+                    "properties": {
+                        "type": {
+                            "const": "sectionReference"
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "description": "The ID of the target section."
+                        },
+                        "targetNumber": {
+                            "type": "string",
+                            "description": "Resolved section number (e.g., '1.2.3'). Filled during compute phase."
+                        },
+                        "targetTitle": {
+                            "type": "string",
+                            "description": "Resolved section title. Filled during compute phase."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            },
+                            "description": "Optional custom link text. If omitted, the renderer should use the section number (e.g., 'Section 1.2')."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "targetId"
+                    ]
+                }
+            ]
+        },
+        "InlineRequirement": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "RFC 2119 requirement keyword. Indexed during the indexing phase.",
+                    "properties": {
+                        "type": {
+                            "const": "requirement"
+                        },
+                        "keyword": {
+                            "$ref": "#/definitions/NormativeKeyword"
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Optional requirement identifier"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "keyword"
+                    ]
+                }
+            ]
+        },
+        "InlineIssue": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Open issue or TODO marker. Indexed during the indexing phase.",
+                    "properties": {
+                        "type": {
+                            "const": "issue"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "status": {
+                            "type": "string",
+                            "enum": [
+                                "open",
+                                "closed",
+                                "wontfix"
+                            ],
+                            "default": "open"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "InlineCite": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Citation marker. The key is parse-level; resolve may link to a bibliography entry and validate presence/ambiguity. Indexed during the indexing phase.",
+                    "properties": {
+                        "type": {
+                            "const": "cite"
+                        },
+                        "key": {
+                            "type": "string",
+                            "description": "Citation key (e.g., RFC2119, WHATWG-URL, etc.)"
+                        },
+                        "kind": {
+                            "type": "string",
+                            "enum": [
+                                "normative",
+                                "informative"
+                            ],
+                            "description": "Final citation kind. Determined by forcing or section context."
+                        },
+                        "expanded": {
+                            "type": "boolean",
+                            "description": "True for [[[FOO]]] form - displays full title."
+                        },
+                        "forcedNormative": {
+                            "type": "boolean",
+                            "description": "True if [[!FOO]] or data-cite starts with !."
+                        },
+                        "forcedInformative": {
+                            "type": "boolean",
+                            "description": "True if [[?FOO]] form."
+                        },
+                        "specId": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "Spec shortname from data-cite (e.g., 'html', 'dom')."
+                        },
+                        "path": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "Path component from data-cite (e.g., '/section-2')."
+                        },
+                        "fragment": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "Fragment identifier from data-cite (e.g., 'the-a-element')."
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "description": "Resolved ID of the bibliography entry. Filled during resolve phase."
+                        },
+                        "url": {
+                            "type": "string",
+                            "description": "Resolved URL of the citation. Filled during resolve phase."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            },
+                            "description": "Optional inline content that represents the cite text."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "key"
+                    ]
+                }
+            ]
+        },
+        "InlineVariable": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Algorithm variable marker (e.g., |x| in ReSpec). Rendered as <var> in HTML.",
+                    "properties": {
+                        "type": {
+                            "const": "variable"
+                        },
+                        "value": {
+                            "type": "string",
+                            "description": "The variable name or content."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value"
+                    ]
+                }
+            ]
+        },
+        "InlineHtmlElement": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Generic inline HTML element preserved in AST for renderer-level passthrough.",
+                    "properties": {
+                        "type": {
+                            "const": "htmlInlineElement"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "tagName": {
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "$ref": "#/definitions/HtmlAttributes"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "tagName",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "Inline": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/InlineText"
+                },
+                {
+                    "$ref": "#/definitions/InlineEmphasis"
+                },
+                {
+                    "$ref": "#/definitions/InlineStrong"
+                },
+                {
+                    "$ref": "#/definitions/InlineCode"
+                },
+                {
+                    "$ref": "#/definitions/InlineLink"
+                },
+                {
+                    "$ref": "#/definitions/InlineImage"
+                },
+                {
+                    "$ref": "#/definitions/InlineDefinition"
+                },
+                {
+                    "$ref": "#/definitions/InlineReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineRequirement"
+                },
+                {
+                    "$ref": "#/definitions/InlineIssue"
+                },
+                {
+                    "$ref": "#/definitions/InlineCite"
+                },
+                {
+                    "$ref": "#/definitions/InlineVariable"
+                },
+                {
+                    "$ref": "#/definitions/InlineHtmlElement"
+                },
+                {
+                    "$ref": "#/definitions/InlineSectionReference"
+                }
+            ]
+        },
+        "BlockParagraph": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "paragraph"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "tempId": {
+                            "type": "string"
+                        },
+                        "dataCopConcept": {
+                            "type": "string",
+                            "description": "Optional Class of Products (COP) identifier for this paragraph scope."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockHeading": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "heading"
+                        },
+                        "depth": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 6
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Optional explicit heading ID"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        },
+                        "noToc": {
+                            "type": "boolean",
+                            "description": "If true, the section created from this heading will not be numbered and will be omitted from the TOC.",
+                            "default": false
+                        },
+                        "noTocCount": {
+                            "type": "boolean",
+                            "description": "If true, this heading and its children will not increment the section counter and will not be numbered, but will still be included in the TOC.",
+                            "default": false
+                        },
+                        "dataCopConcept": {
+                            "type": "string",
+                            "description": "Optional Class of Products (COP) identifier for this heading/section scope."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "depth",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockCodeBlock": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "codeBlock"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "lang": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "meta": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "maxItems": 0,
+                            "items": {},
+                            "description": "Always empty - code blocks are leaf nodes with raw value content"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockIdl": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "idl"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string",
+                            "description": "Raw IDL content"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            },
+                            "description": "Tokenized IDL content (Text, Definitions, References)"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockExample": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Example block. Indexed during the indexing phase.",
+                    "properties": {
+                        "type": {
+                            "const": "example"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "title": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockQuote": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "blockquote"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "ListItem": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "listItem"
+                        },
+                        "checked": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ],
+                            "description": "For task lists: true/false/null"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        },
+                        "level": {
+                            "$ref": "#/definitions/NormativeLevel"
+                        },
+                        "subject": {
+                            "type": "string"
+                        },
+                        "contentText": {
+                            "type": "string"
+                        },
+                        "tempId": {
+                            "type": "string"
+                        },
+                        "dataCopConcept": {
+                            "type": "string"
+                        }
+                    }
+,
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockList": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "list"
+                        },
+                        "ordered": {
+                            "type": "boolean"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "start": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "description": "Starting number for ordered lists"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ListItem"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "ordered",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "TableCell": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "tableCell"
+                        },
+                        "header": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "align": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "left",
+                                "center",
+                                "right",
+                                null
+                            ]
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Inline"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "TableRow": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "tableRow"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TableCell"
+                            }
+                        },
+                        "level": {
+                            "$ref": "#/definitions/NormativeLevel"
+                        },
+                        "subject": {
+                            "type": "string"
+                        },
+                        "contentText": {
+                            "type": "string"
+                        },
+                        "tempId": {
+                            "type": "string"
+                        },
+                        "dataCopConcept": {
+                            "type": "string"
+                        }
+                    }
+,
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockTable": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "table"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TableRow"
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockThematicBreak": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "thematicBreak"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "maxItems": 0,
+                            "items": {},
+                            "description": "Always empty - thematic breaks are void/leaf nodes"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockLikeC4View": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "likeC4View"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "viewId": {
+                            "type": "string",
+                            "description": "LikeC4 view ID"
+                        },
+                        "dynamicVariant": {
+                            "type": "string",
+                            "enum": [
+                                "diagram",
+                                "sequence"
+                            ],
+                            "description": "Optional visualization variant"
+                        },
+                        "children": {
+                            "type": "array",
+                            "maxItems": 0,
+                            "items": {},
+                            "description": "Always empty - LikeC4 views are leaf nodes"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "viewId",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockHtml": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "html"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "maxItems": 0,
+                            "items": {},
+                            "description": "Always empty - HTML blocks are leaf nodes with raw value content"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "value",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockHtmlElement": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Generic HTML element preserved as a structural block for renderer-level passthrough.",
+                    "properties": {
+                        "type": {
+                            "const": "htmlElement"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "tagName": {
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "$ref": "#/definitions/HtmlAttributes"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "tagName",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockNote": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "Note or aside block. Content is informative (non-normative). Used for <aside>, <div class='note'>, etc.",
+                    "properties": {
+                        "type": {
+                            "const": "note"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "noteType": {
+                            "type": "string",
+                            "enum": [
+                                "note",
+                                "warning",
+                                "example",
+                                "issue"
+                            ],
+                            "description": "Type of note, derived from class or element semantics."
+                        },
+                        "informative": {
+                            "type": "boolean",
+                            "const": true,
+                            "description": "Always true - marks content scope as informative for citation classification."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        },
+                        "src": {
+                            "type": "string",
+                            "description": "Optional source URL, e.g., for issue notes."
+                        },
+                        "data": {
+                            "type": "object",
+                            "description": "Optional payload data fetched from the source."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "informative",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockSpecStatement": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "A semantic statement node (normative or informative). Auto-detects RFC 2119 keywords and handles JSON-LD harvesting.",
+                    "properties": {
+                        "type": {
+                            "const": "specStatement"
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Unique identifier for this statement. If not explicitly provided, it is finalized from tempId during post-processing."
+                        },
+                        "tempId": {
+                            "type": "string",
+                            "description": "Temporary/candidate identifier used during parse before uniqueness is guaranteed."
+                        },
+                        "level": {
+                            "$ref": "#/definitions/NormativeLevel",
+                            "description": "The requirement level of the statement."
+                        },
+                        "contentText": {
+                            "type": "string",
+                            "description": "Plain text content of the statement (collapsed whitespace)."
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    { "$ref": "#/definitions/Block" },
+                                    { "$ref": "#/definitions/Inline" }
+                                ]
+                            }
+                        },
+                        "dataCopConcept": {
+                            "type": "string",
+                            "description": "Optional explicit Class of Products (COP) identifier for this statement."
+                        },
+                        "dataIdPattern": {
+                            "type": "string",
+                            "description": "Optional pattern (e.g. `req-{\\d}`, `req-{\\a}`) to assign deterministic IDs to generated nested statements."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "contentText",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "BlockSpecStatementGroup": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "A structural container for a group of spec statements (e.g. derived from a list). Does not carry a normative level itself.",
+                    "properties": {
+                        "type": {
+                            "const": "specStatementGroup"
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Optional unique identifier for the group container."
+                        },
+                        "level": {
+                            "$ref": "#/definitions/NormativeLevel"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Block"
+                            }
+                        },
+                        "dataCopConcept": {
+                            "type": "string",
+                            "description": "Optional explicit Class of Products (COP) identifier for this group scope."
+                        },
+                        "dataIdPattern": {
+                            "type": "string",
+                            "description": "Optional pattern (e.g. `req-{\\d}`, `req-{\\a}`) to assign deterministic IDs to generated nested statements."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "Block": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/BlockParagraph"
+                },
+                {
+                    "$ref": "#/definitions/BlockHeading"
+                },
+                {
+                    "$ref": "#/definitions/BlockCodeBlock"
+                },
+                {
+                    "$ref": "#/definitions/BlockExample"
+                },
+                {
+                    "$ref": "#/definitions/BlockQuote"
+                },
+                {
+                    "$ref": "#/definitions/BlockList"
+                },
+                {
+                    "$ref": "#/definitions/BlockTable"
+                },
+                {
+                    "$ref": "#/definitions/BlockThematicBreak"
+                },
+                {
+                    "$ref": "#/definitions/BlockHtml"
+                },
+                {
+                    "$ref": "#/definitions/BlockHtmlElement"
+                },
+                {
+                    "$ref": "#/definitions/BlockLikeC4View"
+                },
+                {
+                    "$ref": "#/definitions/BlockIdl"
+                },
+                {
+                    "$ref": "#/definitions/BlockNote"
+                },
+                {
+                    "$ref": "#/definitions/BlockSpecStatement"
+                },
+                {
+                    "$ref": "#/definitions/BlockSpecStatementGroup"
+                }
+            ]
+        },
+        "Section": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseNode"
+                },
+                {
+                    "type": "object",
+                    "description": "A section groups related content. Supports in-place authoring without includes.",
+                    "properties": {
+                        "type": {
+                            "const": "section"
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Optional explicit section identifier"
+                        },
+                        "heading": {
+                            "$ref": "#/definitions/BlockHeading",
+                            "description": "Optional section heading"
+                        },
+                        "noToc": {
+                            "type": "boolean",
+                            "description": "If true, this section and its descendants do not increment the TOC counter at this level and are omitted from the TOC.",
+                            "default": false
+                        },
+                        "noTocCount": {
+                            "type": "boolean",
+                            "description": "If true, this section and its descendants do not increment the section counter and are not numbered, but are still included in the TOC.",
+                            "default": false
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/definitions/Section"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/Block"
+                                    }
+                                ]
+                            }
+                        },
+                        "dataCopConcept": {
+                            "type": "string",
+                            "description": "Optional Class of Products (COP) identifier for this section scope."
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "children"
+                    ]
+                }
+            ]
+        },
+        "IndexDefinitionEntry": {
+            "type": "object",
+            "description": "Entry in the definitions index, extracted from InlineDefinition nodes",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "term": {
+                    "type": "string"
+                },
+                "documentId": {
+                    "type": "string",
+                    "description": "ID of the document containing this definition"
+                },
+                "linkTexts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Alternative link texts (aliases)"
+                },
+                "forContexts": {
+                    "type": "array",
+                    "items": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": "Contexts this definition applies to"
+                },
+                "dfnType": {
+                    "type": "string",
+                    "description": "Type of definition (e.g. 'interface', 'dfn')"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "id",
+                "term",
+                "sourcePos"
+            ]
+        },
+        "IndexReferenceEntry": {
+            "type": "object",
+            "description": "Entry in the references index, extracted from InlineReference nodes",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Concrete reference type (e.g., workspaceDfnReference, externalIdlReference)"
+                },
+                "targetId": {
+                    "type": "string"
+                },
+                "targetTerm": {
+                    "type": "string"
+                },
+                "targetDocumentId": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "targetTerm",
+                "sourcePos"
+            ]
+        },
+        "IndexRequirementEntry": {
+            "type": "object",
+            "description": "Entry in the requirements index, extracted from InlineRequirement nodes",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "keyword": {
+                    "type": "string"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "keyword",
+                "sourcePos"
+            ]
+        },
+        "IndexIssueEntry": {
+            "type": "object",
+            "description": "Entry in the issues index, extracted from InlineIssue nodes",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "sourcePos"
+            ]
+        },
+        "IndexExampleEntry": {
+            "type": "object",
+            "description": "Entry in the examples index, extracted from BlockExample nodes",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "sourcePos"
+            ]
+        },
+        "IndexCiteEntry": {
+            "type": "object",
+            "description": "Entry in the citations index, extracted from InlineCite nodes",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "normative",
+                        "informative"
+                    ]
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "key",
+                "sourcePos"
+            ]
+        },
+        "IndexBiblioEntry": {
+            "type": "object",
+            "description": "Entry in the bibliography index, merged from config and/or authored biblio sources during resolve/index phases",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Optional status or classification for the reference (e.g., 'standard', 'draft')"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                },
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of authors"
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Publication date"
+                },
+                "publisher": {
+                    "type": "string",
+                    "description": "Publisher name (e.g. 'IETF', 'W3C')"
+                },
+                "raw": {
+                    "type": "string",
+                    "description": "Raw bibliography entry text (optional fallback)"
+                }
+            },
+            "required": [
+                "key"
+            ]
+        },
+        "IndexStatementEntry": {
+            "type": "object",
+            "description": "Entry in the statements index, extracted from BlockSpecStatement nodes",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "contentText": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "Resolved requirement subject IRI (Class of Product)"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "id",
+                "level",
+                "contentText",
+                "sourcePos"
+            ]
+        },
+        "DocumentIndexes": {
+            "type": "object",
+            "description": "Indexes extracted from AST marker nodes during indexing within a single document.",
+            "properties": {
+                "definitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexDefinitionEntry"
+                    }
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexReferenceEntry"
+                    }
+                },
+                "requirements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexRequirementEntry"
+                    }
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexIssueEntry"
+                    }
+                },
+                "examples": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexExampleEntry"
+                    }
+                },
+                "citations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexCiteEntry"
+                    }
+                },
+                "statements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexStatementEntry"
+                    }
+                }
+            }
+        },
+        "GlobalIndex": {
+            "type": "object",
+            "description": "Aggregated global index across all documents in a workspace.",
+            "properties": {
+                "definitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexDefinitionEntry"
+                    }
+                },
+                "bibliography": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/IndexBiblioEntry"
+                    }
+                }
+            }
+        },
+        "TocEntry": {
+            "type": "object",
+            "description": "Table of contents entry",
+            "x-computed": true,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "depth": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "string",
+                    "description": "Hierarchical number like '1.2.3'"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TocEntry"
+                    }
+                }
+            },
+            "required": [
+                "depth",
+                "text"
+            ]
+        },
+        "ComputedFields": {
+            "type": "object",
+            "description": "Optional computed fields. Marked x-computed for semantic/full AST distinction.",
+            "x-computed": true,
+            "properties": {
+                "toc": {
+                    "type": "array",
+                    "description": "Table of contents derived from headings",
+                    "x-computed": true,
+                    "items": {
+                        "$ref": "#/definitions/TocEntry"
+                    }
+                },
+                "headingNumbers": {
+                    "type": "object",
+                    "description": "Map of heading ID to hierarchical number string",
+                    "x-computed": true,
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "headingTitles": {
+                    "type": "object",
+                    "description": "Map of heading ID to plain text title",
+                    "x-computed": true,
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "wordCount": {
+                    "type": "integer",
+                    "description": "Total word count",
+                    "x-computed": true
+                },
+                "statementsJsonLd": {
+                    "type": "object",
+                    "description": "Embedded machine-readable statements/requirements in JSON-LD format.",
+                    "x-computed": true
+                },
+                "readingTime": {
+                    "type": "integer",
+                    "description": "Estimated reading time in minutes",
+                    "x-computed": true
+                }
+            }
+        },
+        "InlineReference": {
+            "description": "Union of all inline reference types",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/InlineWorkspaceDfnReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineWorkspaceIdlReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineWorkspaceElementReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineExternalDfnReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineExternalIdlReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineExternalElementReference"
+                },
+                {
+                    "$ref": "#/definitions/InlineCite"
+                },
+                {
+                    "$ref": "#/definitions/InlineSectionReference"
+                }
+            ]
+        },
+        "DocumentMetadata": {
+            "type": "object",
+            "description": "Document-level metadata from frontmatter or config",
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "subtitle": {
+                    "type": "string"
+                },
+                "shortName": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "deps": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Dependencies from config.json"
+                },
+                "editors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "company": {
+                                "type": "string"
+                            },
+                            "note": {
+                                "type": "string"
+                            },
+                            "w3cid": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "company": {
+                                "type": "string"
+                            },
+                            "note": {
+                                "type": "string"
+                            },
+                            "w3cid": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "publishDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO 8601 date format (YYYY-MM-DD)"
+                },
+                "creationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Original creation date (YYYY-MM-DD)"
+                },
+                "lastUpdateDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Last update date (YYYY-MM-DD)"
+                },
+                "abstract": {
+                    "type": "string"
+                },
+                "maturityLevel": {
+                    "type": "string",
+                    "enum": [
+                        "incubating",
+                        "draft",
+                        "prerelease",
+                        "stable"
+                    ],
+                    "description": "Normalized maturity level"
+                },
+                "repository": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "branch": {
+                                    "type": "string"
+                                },
+                                "repoType": {
+                                    "type": "string",
+                                    "enum": [
+                                        "github",
+                                        "gitlab",
+                                        "manual"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "url"
+                            ]
+                        }
+                    ]
+                },
+                "group": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name"
+                            ]
+                        }
+                    ]
+                },
+                "copyright": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
+                "logos": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "src": {
+                                "type": "string"
+                            },
+                            "alt": {
+                                "type": "string"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "src"
+                        ]
+                    }
+                },
+                "custom": {
+                    "type": "object",
+                    "description": "Highest priority user-defined properties",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "Document": {
+            "type": "object",
+            "description": "A single specification document",
+            "properties": {
+                "type": {
+                    "const": "document"
+                },
+                "id": {
+                    "type": "string",
+                    "description": "Document identifier, used as slug for internal link resolution. Synced from config.id"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/DocumentMetadata"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/Section"
+                            },
+                            {
+                                "$ref": "#/definitions/Block"
+                            }
+                        ]
+                    }
+                },
+                "indexes": {
+                    "$ref": "#/definitions/DocumentIndexes",
+                    "description": "Indexes extracted from marker nodes during indexing"
+                },
+                "computed": {
+                    "$ref": "#/definitions/ComputedFields",
+                    "description": "Optional computed fields (x-computed: true)"
+                },
+                "sourcePos": {
+                    "$ref": "#/definitions/SourcePos"
+                }
+            },
+            "required": [
+                "type",
+                "id",
+                "children"
+            ]
+        }
+    },
+    "properties": {
+        "schemaVersion": {
+            "type": "string",
+            "const": "1.1.0",
+            "description": "Schema version for this AST format"
+        },
+        "type": {
+            "const": "workspace"
+        },
+        "documents": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Document"
+            },
+            "description": "Collection of documents in the workspace"
+        },
+        "globalIndex": {
+            "$ref": "#/definitions/GlobalIndex",
+            "description": "Aggregated global index across all documents"
+        }
+    },
+    "required": [
+        "type",
+        "documents"
+    ]
+}

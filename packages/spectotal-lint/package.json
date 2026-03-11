@@ -1,0 +1,54 @@
+{
+    "name": "@spectotal/lint",
+    "version": "0.1.0",
+    "description": "Rule-engine lint package for Spectotal AST + IndexBundle",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "spectotal-lint": "bin/spectotal-lint.js"
+    },
+    "imports": {
+        "#src/*": "./dist/*.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "prepack": "pnpm build",
+        "dev": "tsc --watch",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "lint": "eslint src --ext .ts --max-warnings 0",
+        "lint:fix": "eslint src --ext .ts --fix",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.0",
+        "@typescript-eslint/eslint-plugin": "^7.0.0",
+        "@typescript-eslint/parser": "^7.0.0",
+        "eslint": "^8.57.0",
+        "typescript": "^5.3.0",
+        "vitest": "^1.0.0"
+    },
+    "dependencies": {
+        "@spectotal/core": "workspace:*"
+    },
+    "files": [
+        "dist",
+        ".spectotallintrc.example.json"
+    ],
+    "keywords": [
+        "linter",
+        "ast",
+        "specification",
+        "validation",
+        "spectotal"
+    ],
+    "license": "MIT",
+    "lint-staged": {
+        "src/**/!(*.generated).ts": [
+            "eslint --fix --max-warnings 0",
+            "bash -c 'pnpm typecheck'",
+            "bash -c 'pnpm test --run'"
+        ]
+    }
+}
