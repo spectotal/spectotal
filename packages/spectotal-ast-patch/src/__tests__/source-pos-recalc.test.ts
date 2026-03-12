@@ -72,7 +72,7 @@ describe('synthetic source position recalculation', () => {
       level: 0,
       config: {
         id: 'doc-source',
-        deps: [],
+        dependsOn: [],
         specIri: 'https://example.org/spec/doc-source',
       },
     };

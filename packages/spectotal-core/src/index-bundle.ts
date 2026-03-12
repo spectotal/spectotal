@@ -1,7 +1,9 @@
 import type {
+  DocumentProfileContext,
   Document,
   IndexBundle,
   IndexBundleDocument,
+  RelationGraph,
   StructuralWorkspaceAst,
   Workspace,
 } from './types.js';
@@ -20,9 +22,15 @@ function documentSort(left: IndexBundleDocument, right: IndexBundleDocument): nu
   return (left.sourceFile ?? '').localeCompare(right.sourceFile ?? '');
 }
 
+export interface CreateIndexBundleOptions {
+  relationGraph?: RelationGraph;
+  profileContextByDocumentId?: Record<string, DocumentProfileContext>;
+}
+
 export function createIndexBundle<TWorkspace extends Workspace>(
   workspace: TWorkspace,
   profileId: string,
+  options?: CreateIndexBundleOptions,
 ): IndexBundle<TWorkspace> {
   const documents = workspace.documents
     .map((document) => ({
@@ -30,12 +38,18 @@ export function createIndexBundle<TWorkspace extends Workspace>(
       sourceFile: document.sourcePos?.file,
       indexes: document.indexes ? cloneValue(document.indexes) : undefined,
       computed: document.computed ? cloneValue(document.computed) : undefined,
+      profileContext: options?.profileContextByDocumentId?.[document.id]
+        ? cloneValue(options.profileContextByDocumentId[document.id]!)
+        : document.profileContext
+          ? cloneValue(document.profileContext)
+          : undefined,
     }))
     .sort(documentSort) as Array<IndexBundleDocument<TWorkspace['documents'][number]>>;
 
   return {
     schemaVersion: '1.0.0',
     profileId,
+    relationGraph: options?.relationGraph ? cloneValue(options.relationGraph) : undefined,
     globalIndex: workspace.globalIndex ? cloneValue(workspace.globalIndex) : undefined,
     documents,
   };
@@ -50,6 +64,7 @@ export function stripDerivedWorkspaceAst<TWorkspace extends Workspace>(
   for (const document of clonedWorkspace.documents) {
     delete document.indexes;
     delete document.computed;
+    delete document.profileContext;
   }
 
   return clonedWorkspace as unknown as StructuralWorkspaceAst<TWorkspace>;
@@ -71,6 +86,9 @@ export function hydrateWorkspaceFromIndexBundle<TWorkspace extends Workspace>(
     }
     if (indexEntry.computed) {
       document.computed = cloneValue(indexEntry.computed);
+    }
+    if (indexEntry.profileContext) {
+      document.profileContext = cloneValue(indexEntry.profileContext);
     }
   }
 

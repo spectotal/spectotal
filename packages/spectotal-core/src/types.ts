@@ -33,7 +33,7 @@ export interface AstNode {
 
 export interface SpecConfig {
   id: string;
-  deps: string[];
+  dependsOn: string[];
   specIri: string;
   [key: string]: any;
 }
@@ -49,6 +49,7 @@ export interface Document<
   indexes?: TIndexes;
   computed?: TComputed;
   metadata?: Record<string, any>;
+  profileContext?: Record<string, unknown>;
 }
 
 export interface Workspace<
@@ -76,8 +77,41 @@ export type InlineExternalIdlReference = any;
 export type InlineExternalElementReference = any;
 export type Section = any;
 export type TocEntry = any;
-export type DocumentMetadata = any;
+export type DocumentProfileContext = Record<string, unknown>;
+export type DocumentMetadata = DocumentProfileContext;
 export type IndexDefinitionEntry = any;
+
+export type RelationKind = 'dependsOn';
+
+export interface RelationGraphNode {
+  documentId: string;
+  sourceFile?: string;
+}
+
+export interface RelationGraphEdge {
+  kind: RelationKind;
+  fromDocumentId: string;
+  toDocumentId: string;
+}
+
+export interface RelationGraphDiagnostic {
+  code: 'unknown-dependency' | 'self-dependency' | 'cycle';
+  message: string;
+  documentId?: string;
+  dependencyId?: string;
+  cycle?: string[];
+}
+
+export interface RelationGraph {
+  schemaVersion: '1.0.0';
+  relationKind: RelationKind;
+  nodes: RelationGraphNode[];
+  edges: RelationGraphEdge[];
+  topologicalOrder: string[];
+  directDependenciesByDocumentId: Record<string, string[]>;
+  transitiveDependenciesByDocumentId: Record<string, string[]>;
+  diagnostics: RelationGraphDiagnostic[];
+}
 
 export interface FileProvider {
   readFile(filePath: string): Promise<string>;
@@ -211,10 +245,20 @@ export interface SpectotalProfile<
   postprocessWorkspace?(
     options: ProfilePostprocessWorkspaceOptions<TWorkspace, TConfig>,
   ): Promise<ProfilePostprocessWorkspaceResult<TWorkspace>> | ProfilePostprocessWorkspaceResult<TWorkspace>;
-  buildIndexBundle?(options: { workspace: TWorkspace; profileId: string }): IndexBundle<TWorkspace>;
+  buildIndexBundle?(options: {
+    workspace: TWorkspace;
+    profileId: string;
+    configByDocumentId?: Record<string, Partial<TConfig>>;
+    relationGraph?: RelationGraph;
+    profileContextByDocumentId?: Record<string, DocumentProfileContext>;
+  }): IndexBundle<TWorkspace>;
+  buildDocumentContext?(options: {
+    document: TWorkspace['documents'][number];
+    config: TConfig;
+  }): DocumentProfileContext | undefined;
 }
 
-export type StructuralDocumentAst<TDocument extends Document = Document> = Omit<TDocument, 'indexes' | 'computed'>;
+export type StructuralDocumentAst<TDocument extends Document = Document> = Omit<TDocument, 'indexes' | 'computed' | 'profileContext'>;
 
 export type StructuralWorkspaceAst<TWorkspace extends Workspace = Workspace> = Omit<TWorkspace, 'documents' | 'globalIndex'> & {
   documents: Array<StructuralDocumentAst<TWorkspace['documents'][number]>>;
@@ -225,11 +269,13 @@ export interface IndexBundleDocument<TDocument extends Document = Document> {
   sourceFile?: string;
   indexes?: TDocument['indexes'];
   computed?: TDocument['computed'];
+  profileContext?: DocumentProfileContext;
 }
 
 export interface IndexBundle<TWorkspace extends Workspace = Workspace> {
   schemaVersion: '1.0.0';
   profileId: string;
+  relationGraph?: RelationGraph;
   globalIndex?: TWorkspace['globalIndex'];
   documents: Array<IndexBundleDocument<TWorkspace['documents'][number]>>;
 }
@@ -245,6 +291,23 @@ export interface RunSpecOptions<
   env?: Record<string, string | undefined>;
   profile: SpectotalProfile<TDocument, TWorkspace, TConfig>;
   defaultConfig?: Partial<TConfig>;
+}
+
+export interface WorkspaceSpecEntry<TConfig extends SpecConfig = SpecConfig> {
+  entry: string;
+  configPath?: string;
+  defaultConfig?: Partial<TConfig>;
+}
+
+export interface RunWorkspaceSpecOptions<
+  TDocument extends Document = Document,
+  TWorkspace extends Workspace<TDocument> = Workspace<TDocument>,
+  TConfig extends SpecConfig = SpecConfig,
+> {
+  entries: WorkspaceSpecEntry<TConfig>[];
+  fileProvider?: FileProvider;
+  env?: Record<string, string | undefined>;
+  profile: SpectotalProfile<TDocument, TWorkspace, TConfig>;
 }
 
 export interface PostprocessDocumentWithProfileOptions<

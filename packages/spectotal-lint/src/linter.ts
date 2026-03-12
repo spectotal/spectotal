@@ -6,18 +6,22 @@ import type {
   LintRule,
   RuleResult,
 } from './types.js';
-import type { StructuralWorkspaceAst } from '@spectotal/core';
+import type { IndexBundle, StructuralWorkspaceAst } from '@spectotal/core';
 import { getRuleSeverity } from './config.js';
 import { runRule } from './rule-runner.js';
 
 function inferDocumentLevelsFromWorkspaceAst(
   workspaceAst: StructuralWorkspaceAst,
+  indexBundle: IndexBundle,
 ): Map<string, number> {
+  const rankByDocumentId = new Map<string, number>(
+    (indexBundle.relationGraph?.topologicalOrder ?? []).map((documentId, rank) => [documentId, rank]),
+  );
   const levels = new Map<string, number>();
   workspaceAst.documents.forEach((document, index) => {
     const file = document.sourcePos?.file;
     if (!file) return;
-    levels.set(file, index);
+    levels.set(file, rankByDocumentId.get(document.id) ?? index);
   });
   return levels;
 }
@@ -37,7 +41,7 @@ export class SpectotalLinter {
     const allDiagnostics: LintDiagnostic[] = [];
     const ruleResults = new Map<string, RuleResult>();
     const documentLevels = options.documentLevels
-      ?? inferDocumentLevelsFromWorkspaceAst(options.workspaceAst);
+      ?? inferDocumentLevelsFromWorkspaceAst(options.workspaceAst, options.indexBundle);
 
     for (const [ruleName, rule] of this.rules) {
       if (!this.isRuleEnabled(config, ruleName)) continue;

@@ -7,7 +7,8 @@
     "build:packages": "pnpm -r --filter ./packages/** run build",
     "ci:publish": "pnpm -r --filter './packages/**' publish --access public --provenance",
     "changeset": "changeset",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "check:no-legacy-deps": "if rg -n '\"deps\"\\s*:' packages --glob '!**/__tests__/**' --glob '!**/tests/**' --glob '!**/__snapshots__/**'; then echo 'Legacy deps key found; use dependsOn'; exit 1; fi"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

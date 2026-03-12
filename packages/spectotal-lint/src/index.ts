@@ -1,5 +1,5 @@
 export { SpectotalLinter } from './linter.js';
-export { runRule, inferDocumentLevels } from './rule-runner.js';
+export { runRule, inferDocumentLevels, inferDocumentLevelsFromIndexBundle } from './rule-runner.js';
 export {
   defaultConfig,
   normalizeConfig,

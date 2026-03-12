@@ -1,11 +1,18 @@
-export { runSpec, postprocessDocumentWithProfile, postprocessWorkspaceWithProfile } from './run-spec.js';
+export {
+  runSpec,
+  runWorkspaceSpec,
+  postprocessDocumentWithProfile,
+  postprocessWorkspaceWithProfile,
+} from './run-spec.js';
 export { ProfileParserRegistry } from './parser-registry.js';
 export { SpectotalProfileRegistry, createProfileRegistry } from './profile-registry.js';
+export { buildRelationGraph, isDependencyReachable, canReferenceDocument } from './relation-graph.js';
 export {
   createIndexBundle,
   stripDerivedWorkspaceAst,
   hydrateWorkspaceFromIndexBundle,
 } from './index-bundle.js';
+export type { CreateIndexBundleOptions } from './index-bundle.js';
 export { createCoreValidationAdapter } from './validator-adapter.js';
 export { MemoryFileProvider, NodeFileProvider } from './file-provider.js';
 export { Parse, inferLevel } from './parse-utils.js';
@@ -14,6 +21,7 @@ export type {
   AstNode,
   ComputedMap,
   DocumentMetadata,
+  DocumentProfileContext,
   Document,
   FileProvider,
   IndexDefinitionEntry,
@@ -39,9 +47,11 @@ export type {
   ProfilePreprocessOptions,
   ProfilePreprocessResult,
   RunSpecOptions,
+  RunWorkspaceSpecOptions,
   Section,
   SourcePos,
   SpecConfig,
+  WorkspaceSpecEntry,
   SpectotalProfile,
   SpectotalRunResult,
   StructuralDocumentAst,
@@ -62,6 +72,11 @@ export type {
   InlineExternalDfnReference,
   InlineExternalIdlReference,
   InlineExternalElementReference,
+  RelationGraph,
+  RelationGraphDiagnostic,
+  RelationGraphEdge,
+  RelationGraphNode,
+  RelationKind,
 } from './types.js';
 
 export type { CoreValidationAdapter, CoreValidationAdapterResult, ValidationFunction } from './validator-adapter.js';
