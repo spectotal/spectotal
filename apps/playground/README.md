@@ -22,3 +22,21 @@ The verification build compiles `examples/*.ts` without the development-only wor
 - `examples/parse-w3c-include.ts`
 - `examples/workspace-dag-valid.ts`
 - `examples/workspace-dag-cycle.ts`
+
+## Local Scenario Runner
+
+For local API exploration inside `apps/playground`, run one scenario file by path:
+
+```bash
+pnpm run scenario -- scenarios/parse-w3c-single.ts
+```
+
+The local runner:
+- compiles scenario files under `scenarios/`
+- runs the selected file by name, similar to a focused test runner
+- prints the JSON result
+- writes a local snapshot under `.snapshots-local/`, which stays out of git
+
+Create your own exploratory scenario by adding a new `.ts` file under `scenarios/` that exports either:
+- a default async function returning any JSON-serializable value
+- or a named `run` async function returning any JSON-serializable value

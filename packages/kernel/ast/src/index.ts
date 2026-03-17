@@ -1,5 +1,5 @@
 export type NodeId = string;
-export type AstPath = readonly (string | number)[];
+export type AstPath = readonly number[];
 
 export type Provenance =
   | { kind: "source"; uri: string; line?: number; column?: number }
@@ -8,12 +8,18 @@ export type Provenance =
 
 export interface AstNode {
   readonly kind: string;
-  readonly props?: Readonly<Record<string, unknown>>;
-  readonly slots?: Readonly<Record<string, readonly AstNode[]>>;
+  readonly id?: NodeId;
+  readonly children?: readonly AstNode[];
+  readonly provenance?: Provenance;
+}
+
+export interface CanonicalAstNode extends Omit<AstNode, "children" | "provenance"> {
+  readonly children?: readonly CanonicalAstNode[];
+  readonly provenance: Provenance;
 }
 
 export interface CanonicalDocumentAst {
-  readonly root: AstNode;
+  readonly root: CanonicalAstNode;
   readonly profileId: string;
   readonly version: string;
 }

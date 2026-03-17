@@ -1,27 +1,34 @@
 import type { AstNode } from "@spectotal/ast";
 
-export type SlotName = string;
 export type NodeKind = string;
 
-export interface SlotSchema {
-  readonly name: SlotName;
+export interface ChildSchema {
   readonly accepts: readonly NodeKind[];
   readonly minItems?: number;
   readonly maxItems?: number;
 }
 
+export interface FieldSchema {
+  readonly type: "string" | "number" | "boolean";
+  readonly required?: boolean;
+}
+
 export interface NodeSchema {
   readonly kind: NodeKind;
-  readonly slots?: readonly SlotSchema[];
-  readonly requiredProps?: readonly string[];
+  readonly fields?: Readonly<Record<string, FieldSchema>>;
+  readonly children?: ChildSchema;
 }
 
 export interface ProfileSchema {
   readonly profileId: string;
-  readonly nodes: readonly NodeSchema[];
+  readonly rootKind: NodeKind;
+  readonly nodes: Readonly<Record<NodeKind, NodeSchema>>;
 }
 
-export function acceptsChild(schema: NodeSchema, slotName: string, child: AstNode): boolean {
-  const slot = (schema.slots ?? []).find((entry) => entry.name === slotName);
-  return !!slot && slot.accepts.includes(child.kind);
+export function getNodeSchema(profile: ProfileSchema, kind: NodeKind): NodeSchema | undefined {
+  return profile.nodes[kind];
+}
+
+export function acceptsChild(schema: NodeSchema, child: Pick<AstNode, "kind">): boolean {
+  return schema.children?.accepts.includes(child.kind) === true;
 }

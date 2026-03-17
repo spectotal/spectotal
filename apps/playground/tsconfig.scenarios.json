@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.build.base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": ".",
+    "outDir": "dist-scenarios"
+  },
+  "include": ["scenarios/**/*.ts"]
+}
