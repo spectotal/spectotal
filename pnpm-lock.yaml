@@ -1,0 +1,177 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  apps/playground:
+    dependencies:
+      '@spectotal/profile-w3c':
+        specifier: workspace:*
+        version: link:../../packages/profiles/profile-w3c
+      '@spectotal/source-compose':
+        specifier: workspace:*
+        version: link:../../packages/kernel/source-compose
+      '@spectotal/workspace-graph':
+        specifier: workspace:*
+        version: link:../../packages/kernel/workspace-graph
+
+  packages/kernel/ast: {}
+
+  packages/kernel/ast-patch:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@spectotal/ast-schema':
+        specifier: workspace:*
+        version: link:../ast-schema
+
+  packages/kernel/ast-query:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+
+  packages/kernel/ast-schema:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+
+  packages/kernel/ast-validate:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@spectotal/ast-schema':
+        specifier: workspace:*
+        version: link:../ast-schema
+
+  packages/kernel/derivations: {}
+
+  packages/kernel/diagnostics: {}
+
+  packages/kernel/pipeline:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@spectotal/ast-patch':
+        specifier: workspace:*
+        version: link:../ast-patch
+      '@spectotal/derivations':
+        specifier: workspace:*
+        version: link:../derivations
+      '@spectotal/profile-core':
+        specifier: workspace:*
+        version: link:../../profiles/profile-core
+      '@spectotal/source-compose':
+        specifier: workspace:*
+        version: link:../source-compose
+      '@spectotal/workspace-graph':
+        specifier: workspace:*
+        version: link:../workspace-graph
+
+  packages/kernel/source-compose:
+    dependencies:
+      '@spectotal/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+
+  packages/kernel/workspace-graph:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@spectotal/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+
+  packages/profiles/profile-core:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../../kernel/ast
+      '@spectotal/ast-query':
+        specifier: workspace:*
+        version: link:../../kernel/ast-query
+      '@spectotal/ast-schema':
+        specifier: workspace:*
+        version: link:../../kernel/ast-schema
+      '@spectotal/ast-validate':
+        specifier: workspace:*
+        version: link:../../kernel/ast-validate
+      '@spectotal/source-compose':
+        specifier: workspace:*
+        version: link:../../kernel/source-compose
+
+  packages/profiles/profile-gherkin:
+    dependencies:
+      '@spectotal/ast-schema':
+        specifier: workspace:*
+        version: link:../../kernel/ast-schema
+      '@spectotal/profile-core':
+        specifier: workspace:*
+        version: link:../profile-core
+
+  packages/profiles/profile-w3c:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../../kernel/ast
+      '@spectotal/ast-schema':
+        specifier: workspace:*
+        version: link:../../kernel/ast-schema
+      '@spectotal/profile-core':
+        specifier: workspace:*
+        version: link:../profile-core
+
+  packages/tooling/cli:
+    dependencies:
+      '@spectotal/pipeline':
+        specifier: workspace:*
+        version: link:../../kernel/pipeline
+
+  packages/tooling/lint-core:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../../kernel/ast
+      '@spectotal/derivations':
+        specifier: workspace:*
+        version: link:../../kernel/derivations
+
+  packages/tooling/search-core:
+    dependencies:
+      '@spectotal/ast':
+        specifier: workspace:*
+        version: link:../../kernel/ast
+      '@spectotal/derivations':
+        specifier: workspace:*
+        version: link:../../kernel/derivations
+
+  packages/tooling/test-kit:
+    dependencies:
+      '@spectotal/ast-patch':
+        specifier: workspace:*
+        version: link:../../kernel/ast-patch
+
+packages:
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+snapshots:
+
+  typescript@5.9.3: {}

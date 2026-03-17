@@ -1,0 +1,10 @@
+{
+  "name": "@spectotal/playground",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@spectotal/profile-w3c": "workspace:*",
+    "@spectotal/source-compose": "workspace:*",
+    "@spectotal/workspace-graph": "workspace:*"
+  }
+}

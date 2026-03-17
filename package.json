@@ -1,0 +1,18 @@
+{
+  "name": "spectotal",
+  "private": true,
+  "packageManager": "pnpm@10.6.1",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "build:clean": "find packages apps/playground -type d -name dist -prune -exec rm -rf '{}' +",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:packages": "pnpm -r --if-present typecheck",
+    "playground:build": "pnpm exec tsc -p apps/playground/tsconfig.verify.json",
+    "playground:verify": "pnpm run playground:build && node apps/playground/dist/parse-w3c-single.js && node apps/playground/dist/parse-w3c-include.js && node apps/playground/dist/workspace-dag-valid.js && node apps/playground/dist/workspace-dag-cycle.js",
+    "verify": "pnpm run typecheck && pnpm run typecheck:packages && pnpm run build && pnpm run playground:verify",
+    "lint": "pnpm -r --if-present lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

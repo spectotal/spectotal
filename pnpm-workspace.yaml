@@ -1,0 +1,5 @@
+packages:
+  - "apps/*"
+  - "packages/kernel/*"
+  - "packages/profiles/*"
+  - "packages/tooling/*"
