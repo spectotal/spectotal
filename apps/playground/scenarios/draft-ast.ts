@@ -1,4 +1,14 @@
-import type { AstNode, DraftDocumentAst, Provenance } from "@spectotal/ast";
+import type {
+  AstNode,
+  AstPath,
+  CanonicalAstNode,
+  CanonicalDocumentAst,
+  DraftDocumentAst,
+  Provenance,
+} from "@spectotal/ast";
+import { applyPatches, type AstPatch } from "@spectotal/ast-patch";
+import { findAll, findFirst, visit } from "@spectotal/ast-query";
+import { w3cSchema } from "@spectotal/profile-w3c";
 
 function synthetic(reason: string): Provenance {
   return { kind: "synthetic", reason };
@@ -120,6 +130,148 @@ export const draftDocumentAst: DraftDocumentAst = {
   },
 };
 
-export default async function run(): Promise<DraftDocumentAst> {
-  return draftDocumentAst;
+function toCanonicalNode(node: AstNode, reason: string): CanonicalAstNode {
+  const { children: draftChildren, provenance, ...rest } = node;
+  const children = node.children?.map((child, index) =>
+    toCanonicalNode(child, `${reason}/children/${index}`),
+  );
+
+  return {
+    ...rest,
+    provenance: provenance ?? synthetic(reason),
+    ...(children ? { children } : {}),
+  };
+}
+
+function buildCanonicalDocument(): CanonicalDocumentAst {
+  return {
+    profileId: draftDocumentAst.profileId,
+    version: "draft-ast-playground-v1",
+    root: toCanonicalNode(draftDocumentAst.root, "canonicalized/root"),
+  };
+}
+
+function findPathById(root: AstNode, targetId: string): AstPath | undefined {
+  let found: AstPath | undefined;
+
+  visit(root, (node, path) => {
+    if (!found && node.id === targetId) {
+      found = path;
+    }
+  });
+
+  return found;
+}
+
+function canonicalParagraph(id: string, value: string, reason: string): CanonicalAstNode {
+  return toCanonicalNode(paragraph(id, value), reason);
+}
+
+function canonicalNote(id: string, value: string, reason: string): CanonicalAstNode {
+  return toCanonicalNode(
+    {
+      kind: "note",
+      id,
+      children: [paragraph(`${id}-paragraph`, value)],
+    },
+    reason,
+  );
+}
+
+function buildQuerySummary() {
+  const firstSection = findFirst(draftDocumentAst.root, { kind: "section" });
+  const paragraphIds = findAll(draftDocumentAst.root, { kind: "paragraph" }).map(
+    (node) => node.id ?? null,
+  );
+  const noteIds = findAll(draftDocumentAst.root, { kind: "note" }).map(
+    (node) => node.id ?? null,
+  );
+  const issueParagraphPath = findPathById(draftDocumentAst.root, "issue-paragraph") ?? null;
+  let headingCount = 0;
+
+  visit(draftDocumentAst.root, (node) => {
+    if (node.kind === "heading") headingCount += 1;
+  });
+
+  return {
+    firstSectionId: firstSection?.id ?? null,
+    paragraphIds,
+    noteIds,
+    issueParagraphPath,
+    headingCount,
+  };
+}
+
+function buildValidPatches(): readonly AstPatch[] {
+  return [
+    {
+      op: "insert",
+      target: {
+        at: "end",
+        parent: { by: "nodeId", nodeId: "section-conformance" },
+      },
+      nodes: [
+        canonicalNote(
+          "conformance-patch-note",
+          "Patched notes can be inserted into the conformance section.",
+          "patches/valid/insert-note",
+        ),
+      ],
+    },
+    {
+      op: "replace",
+      target: { by: "path", path: [3, 1] },
+      nodes: [
+        canonicalParagraph(
+          "issue-paragraph-updated",
+          "The open API question now tracks the reduced ast-patch contract.",
+          "patches/valid/replace-issue-paragraph",
+        ),
+      ],
+    },
+    {
+      op: "remove",
+      target: { by: "path", path: [1, 2, 0] },
+    },
+  ];
+}
+
+function buildInvalidPatches(): readonly AstPatch[] {
+  return [
+    {
+      op: "remove",
+      target: { by: "path", path: [] },
+    },
+    {
+      op: "insert",
+      target: {
+        at: "index",
+        parent: { by: "nodeId", nodeId: "section-conformance" },
+        index: 99,
+      },
+      nodes: [
+        canonicalParagraph(
+          "out-of-range-insert",
+          "This patch should fail because the insert index is invalid.",
+          "patches/invalid/out-of-range-insert",
+        ),
+      ],
+    },
+  ];
+}
+
+export default async function run(): Promise<unknown> {
+  const canonicalBefore = buildCanonicalDocument();
+  const validPatches = buildValidPatches();
+  const invalidPatches = buildInvalidPatches();
+
+  return {
+    draft: draftDocumentAst,
+    queries: buildQuerySummary(),
+    canonicalBefore,
+    validPatches,
+    validResult: applyPatches(canonicalBefore, w3cSchema, validPatches),
+    invalidPatches,
+    invalidResult: applyPatches(canonicalBefore, w3cSchema, invalidPatches),
+  };
 }

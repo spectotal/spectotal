@@ -8,6 +8,8 @@
   },
   "dependencies": {
     "@spectotal/ast": "workspace:*",
+    "@spectotal/ast-patch": "workspace:*",
+    "@spectotal/ast-query": "workspace:*",
     "@spectotal/profile-w3c": "workspace:*",
     "@spectotal/source-compose": "workspace:*",
     "@spectotal/workspace-graph": "workspace:*"
