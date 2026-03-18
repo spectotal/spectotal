@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -35,10 +35,31 @@ async function listScenarios() {
   }
 }
 
-function getScenarioArgument() {
+function getCliOptions() {
   const [, , ...args] = process.argv;
   const filtered = args.filter((arg) => arg !== "--");
-  return filtered[0];
+
+  let scenarioArg;
+  let listRequested = false;
+  let sourceMode = false;
+
+  for (const arg of filtered) {
+    if (arg === "--list") {
+      listRequested = true;
+      continue;
+    }
+
+    if (arg === "--source") {
+      sourceMode = true;
+      continue;
+    }
+
+    if (!scenarioArg) {
+      scenarioArg = arg;
+    }
+  }
+
+  return { listRequested, scenarioArg, sourceMode };
 }
 
 function toCompiledPath(sourcePath) {
@@ -59,8 +80,9 @@ async function loadScenario(sourcePath) {
     throw new Error(`Scenario path must be inside scenarios/: ${relative(playgroundRoot, sourcePath)}`);
   }
 
-  const compiledPath = toCompiledPath(sourcePath);
-  const module = await import(pathToFileURL(compiledPath).href);
+  const { sourceMode } = getCliOptions();
+  const runtimePath = sourceMode ? sourcePath : toCompiledPath(sourcePath);
+  const module = await import(pathToFileURL(runtimePath).href);
   const runner = typeof module.default === "function" ? module.default : module.run;
 
   if (typeof runner !== "function") {
@@ -78,15 +100,30 @@ async function writeSnapshot(sourcePath, result) {
   return { snapshotPath, payload };
 }
 
-async function main() {
-  const scenarioArg = getScenarioArgument();
+async function resolveScenarioPath(scenarioArg) {
+  const requestedPath = resolve(playgroundRoot, scenarioArg);
+  const extension = extname(requestedPath);
+  const candidates = extension ? [requestedPath] : [requestedPath, `${requestedPath}.ts`];
 
-  if (!scenarioArg || scenarioArg === "--list") {
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {}
+  }
+
+  return requestedPath;
+}
+
+async function main() {
+  const { listRequested, scenarioArg } = getCliOptions();
+
+  if (!scenarioArg || listRequested) {
     await listScenarios();
     return;
   }
 
-  const sourcePath = resolve(playgroundRoot, scenarioArg);
+  const sourcePath = await resolveScenarioPath(scenarioArg);
   const runner = await loadScenario(sourcePath);
   const result = await runner();
   const { snapshotPath, payload } = await writeSnapshot(sourcePath, result);
@@ -100,9 +137,9 @@ void main().catch(async (error) => {
   console.error(message);
 
   try {
-    const requested = getScenarioArgument();
-    if (requested && requested !== "--list") {
-      const resolved = resolve(playgroundRoot, requested);
+    const { scenarioArg, sourceMode } = getCliOptions();
+    if (scenarioArg && !sourceMode) {
+      const resolved = await resolveScenarioPath(scenarioArg);
       const compiledPath = toCompiledPath(resolved);
       const compiledOutput = await readFile(compiledPath, "utf8");
       console.error(`Compiled file exists at ${relative(playgroundRoot, compiledPath)} (${compiledOutput.length} bytes).`);

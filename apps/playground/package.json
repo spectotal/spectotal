@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "play": "node --import ./scripts/register-source-runtime.mjs ./scripts/run-scenario.mjs --source",
     "scenario": "pnpm --dir ../.. run build && pnpm exec tsc -p tsconfig.scenarios.json && node scripts/run-scenario.mjs",
     "rs": "node scripts/run-scenario.mjs"
   },
