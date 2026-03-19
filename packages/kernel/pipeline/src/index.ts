@@ -3,7 +3,11 @@ import type { AstPatch } from "@spectotal/ast-patch";
 import type { DerivationBundle } from "@spectotal/derivations";
 import type { SpectotalProfile } from "@spectotal/profile-core";
 import type { ComposedSource } from "@spectotal/source-compose";
-import type { DocumentId, WorkspaceGraph, WorkspacePlan } from "@spectotal/workspace-graph";
+import type {
+  DocumentId,
+  WorkspaceGraph,
+  WorkspacePlan,
+} from "@spectotal/workspace-graph";
 
 export interface ParseContext {
   readonly plan: CompilePlan;
@@ -15,13 +19,21 @@ export interface ParseContext {
 
 export interface TransformPlugin {
   readonly name: string;
-  run(ast: CanonicalDocumentAst, plan: CompilePlan, workspace?: WorkspaceGraph): Promise<readonly AstPatch[]>;
+  run(
+    ast: CanonicalDocumentAst,
+    plan: CompilePlan,
+    workspace?: WorkspaceGraph,
+  ): Promise<readonly AstPatch[]>;
 }
 
 export interface DerivePlugin<T = unknown> {
   readonly name: string;
   readonly artifactKey: string;
-  run(ast: CanonicalDocumentAst, plan: CompilePlan, workspace?: WorkspaceGraph): Promise<T>;
+  run(
+    ast: CanonicalDocumentAst,
+    plan: CompilePlan,
+    workspace?: WorkspaceGraph,
+  ): Promise<T>;
 }
 
 export interface DocumentPipelineResult {

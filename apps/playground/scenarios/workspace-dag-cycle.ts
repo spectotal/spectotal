@@ -1,14 +1,13 @@
-import { buildWorkspacePlan, topologicallyOrderWorkspace } from "@spectotal/workspace-graph";
+import {
+  buildWorkspacePlan,
+  topologicallyOrderWorkspace,
+} from "@spectotal/workspace-graph";
 
 export default async function run(): Promise<unknown> {
-  const plan = buildWorkspacePlan(
-    "workspace-cycle",
-    { profileId: "w3c" },
-    [
-      { documentId: "B", uri: "fixtures/workspace/cycle/B.md" },
-      { documentId: "C", uri: "fixtures/workspace/cycle/C.md" },
-    ],
-  );
+  const plan = buildWorkspacePlan("workspace-cycle", { profileId: "w3c" }, [
+    { documentId: "B", uri: "fixtures/workspace/cycle/B.md" },
+    { documentId: "C", uri: "fixtures/workspace/cycle/C.md" },
+  ]);
 
   return {
     expectation: "workspace-cycle diagnostic",

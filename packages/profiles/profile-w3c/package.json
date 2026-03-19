@@ -17,11 +17,17 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "schema:generate": "pnpm exec tsx scripts/generate-schema-artifacts.ts",
+    "schema:check": "pnpm exec tsx scripts/generate-schema-artifacts.ts --check",
+    "test": "pnpm --filter @spectotal/ast-schema build && vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@spectotal/ast": "workspace:*",
     "@spectotal/ast-schema": "workspace:*",
     "@spectotal/profile-core": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   }
 }

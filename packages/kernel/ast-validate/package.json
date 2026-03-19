@@ -16,10 +16,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "test": "pnpm --filter @spectotal/ast-schema build && vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@spectotal/ast": "workspace:*",
     "@spectotal/ast-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   }
 }

@@ -2,16 +2,14 @@
 
 ## Purpose
 Define how active profile packages parse source syntax into draft semantic nodes.
-
 ## Requirements
-
 ### Requirement: Profile-owned parsing
-The active profile SHALL own semantic parsing for its domain.
+The active profile SHALL own semantic parsing for its domain, including any HTML or custom-tag classification policy needed by its parsing layer.
 
-#### Scenario: W3C markdown parsing
-- GIVEN the W3C profile is active
-- WHEN markdown source is parsed
-- THEN the W3C profile is responsible for mapping mdast into W3C draft nodes
+#### Scenario: W3C tag classification stays profile-local
+- GIVEN the W3C profile needs to classify an HTML or custom tag while parsing markdown content
+- WHEN that tag is mapped into the profile's structural node kinds
+- THEN the W3C profile defines whether it behaves as flow, phrasing, or void content
 - AND generic kernel packages remain semantic-agnostic
 
 ### Requirement: Markdown-first v1
@@ -31,3 +29,4 @@ The first implementation SHALL NOT require an intermediate IR between mdast and 
 - WHEN semantic meaning is recognized
 - THEN the parser may emit draft nodes directly
 - AND no extra translation layer is required as a precondition
+

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { access, readFile, readdir } from "node:fs/promises";
 import { registerHooks } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -6,6 +7,35 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const playgroundRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(playgroundRoot, "../..");
 const workspaceRoots = [join(repoRoot, "packages"), join(repoRoot, "apps")];
+
+function isRelativeOrAbsolutePath(specifier) {
+  return (
+    specifier.startsWith("./") ||
+    specifier.startsWith("../") ||
+    specifier.startsWith("/")
+  );
+}
+
+function resolveLocalTypeScriptPath(specifier, parentURL) {
+  if (
+    !parentURL ||
+    !specifier.endsWith(".js") ||
+    !isRelativeOrAbsolutePath(specifier)
+  ) {
+    return null;
+  }
+
+  const jsPath = specifier.startsWith("/")
+    ? specifier
+    : fileURLToPath(new URL(specifier, parentURL));
+  const tsPath = `${jsPath.slice(0, -3)}.ts`;
+
+  if (!existsSync(jsPath) && existsSync(tsPath)) {
+    return tsPath;
+  }
+
+  return null;
+}
 
 async function pathExists(path) {
   try {
@@ -37,7 +67,9 @@ async function discoverWorkspacePackages(root, depth = 0) {
     }
 
     if (depth < 3) {
-      packageRoots.push(...(await discoverWorkspacePackages(entryPath, depth + 1)));
+      packageRoots.push(
+        ...(await discoverWorkspacePackages(entryPath, depth + 1)),
+      );
     }
   }
 
@@ -53,7 +85,9 @@ async function createPackageMap() {
     const packageRoots = await discoverWorkspacePackages(workspaceRoot);
 
     for (const packageRoot of packageRoots) {
-      const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
+      const manifest = JSON.parse(
+        await readFile(join(packageRoot, "package.json"), "utf8"),
+      );
       if (typeof manifest.name !== "string") continue;
       packageMap.set(manifest.name, join(packageRoot, "src", "index.ts"));
     }
@@ -72,6 +106,18 @@ registerHooks({
       return {
         shortCircuit: true,
         url: pathToFileURL(sourceEntryPath).href,
+      };
+    }
+
+    const redirectedPath = resolveLocalTypeScriptPath(
+      specifier,
+      context.parentURL,
+    );
+
+    if (redirectedPath) {
+      return {
+        shortCircuit: true,
+        url: pathToFileURL(redirectedPath).href,
       };
     }
 

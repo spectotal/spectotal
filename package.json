@@ -3,16 +3,37 @@
   "private": true,
   "packageManager": "pnpm@10.6.1",
   "scripts": {
+    "benchmark:run": "pnpm --filter @spectotal/benchmark run bench",
     "build": "pnpm -r --if-present build",
     "build:clean": "find packages apps/playground -type d -name dist -prune -exec rm -rf '{}' +",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run typecheck:packages && pnpm run test",
+    "check:fix": "pnpm run lint:fix && pnpm run format",
+    "format": "pnpm exec prettier . --write",
+    "format:check": "pnpm exec prettier . --check",
+    "lint": "pnpm exec eslint . --max-warnings=0",
+    "lint:fix": "pnpm exec eslint . --fix",
+    "play": "pnpm --dir apps/playground run play --",
+    "prepare": "husky",
+    "schema:generate": "pnpm --filter @spectotal/profile-w3c run schema:generate",
+    "schema:check": "pnpm --filter @spectotal/profile-w3c run schema:check",
+    "test": "pnpm -r --if-present test",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:packages": "pnpm -r --if-present typecheck",
     "playground:build": "pnpm exec tsc -p apps/playground/tsconfig.verify.json",
-    "playground:verify": "pnpm run playground:build && node apps/playground/dist/parse-w3c-single.js && node apps/playground/dist/parse-w3c-include.js && node apps/playground/dist/workspace-dag-valid.js && node apps/playground/dist/workspace-dag-cycle.js",
-    "verify": "pnpm run typecheck && pnpm run typecheck:packages && pnpm run build && pnpm run playground:verify",
-    "lint": "pnpm -r --if-present lint"
+    "playground:verify": "pnpm run playground:build && node apps/playground/dist/parse-w3c-single.js && node apps/playground/dist/parse-w3c-include.js && node apps/playground/dist/validate-w3c-ast.js && node apps/playground/dist/patch-w3c-ast.js && node apps/playground/dist/workspace-dag-valid.js && node apps/playground/dist/workspace-dag-cycle.js",
+    "verify": "pnpm run schema:check && pnpm run typecheck && pnpm run typecheck:packages && pnpm run build && pnpm run playground:verify"
   },
   "devDependencies": {
-    "typescript": "^5.8.2"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "tsx": "4.21.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.57.1"
   }
 }

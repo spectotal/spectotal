@@ -1,0 +1,11 @@
+**/coverage/**
+**/dist/**
+**/dist-scenarios/**
+**/node_modules/**
+apps/playground/fixtures/**
+apps/playground/.snapshots-local/**
+docs/**
+openspec/**
+packages/profiles/profile-w3c/src/generated/**
+packages/tooling/test-kit/fixtures/**
+pnpm-lock.yaml

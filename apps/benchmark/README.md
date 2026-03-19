@@ -1,3 +1,3 @@
-# benchmark
+# @spectotal/benchmark
 
-Placeholder app for the Spectotal monorepo.
+Run `pnpm run benchmark:run` from the workspace root to measure generated W3C validation and representative patch application flows.

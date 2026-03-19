@@ -65,28 +65,39 @@ function getCliOptions() {
 function toCompiledPath(sourcePath) {
   const relativeSourcePath = relative(playgroundRoot, sourcePath);
   const extension = extname(relativeSourcePath);
-  return join(outputRoot, relativeSourcePath.slice(0, -extension.length) + ".js");
+  return join(
+    outputRoot,
+    relativeSourcePath.slice(0, -extension.length) + ".js",
+  );
 }
 
 function toSnapshotPath(sourcePath) {
   const relativeSourcePath = relative(sourceRoot, sourcePath);
   const extension = extname(relativeSourcePath);
-  return join(snapshotRoot, relativeSourcePath.slice(0, -extension.length) + ".json");
+  return join(
+    snapshotRoot,
+    relativeSourcePath.slice(0, -extension.length) + ".json",
+  );
 }
 
 async function loadScenario(sourcePath) {
   const relativeScenarioPath = relative(sourceRoot, sourcePath);
   if (relativeScenarioPath.startsWith("..")) {
-    throw new Error(`Scenario path must be inside scenarios/: ${relative(playgroundRoot, sourcePath)}`);
+    throw new Error(
+      `Scenario path must be inside scenarios/: ${relative(playgroundRoot, sourcePath)}`,
+    );
   }
 
   const { sourceMode } = getCliOptions();
   const runtimePath = sourceMode ? sourcePath : toCompiledPath(sourcePath);
   const module = await import(pathToFileURL(runtimePath).href);
-  const runner = typeof module.default === "function" ? module.default : module.run;
+  const runner =
+    typeof module.default === "function" ? module.default : module.run;
 
   if (typeof runner !== "function") {
-    throw new Error(`Scenario ${relative(playgroundRoot, sourcePath)} must export a default function or named run function.`);
+    throw new Error(
+      `Scenario ${relative(playgroundRoot, sourcePath)} must export a default function or named run function.`,
+    );
   }
 
   return runner;
@@ -103,13 +114,17 @@ async function writeSnapshot(sourcePath, result) {
 async function resolveScenarioPath(scenarioArg) {
   const requestedPath = resolve(playgroundRoot, scenarioArg);
   const extension = extname(requestedPath);
-  const candidates = extension ? [requestedPath] : [requestedPath, `${requestedPath}.ts`];
+  const candidates = extension
+    ? [requestedPath]
+    : [requestedPath, `${requestedPath}.ts`];
 
   for (const candidate of candidates) {
     try {
       await access(candidate);
       return candidate;
-    } catch {}
+    } catch {
+      // Ignore missing candidates while checking alternate path shapes.
+    }
   }
 
   return requestedPath;
@@ -142,9 +157,13 @@ void main().catch(async (error) => {
       const resolved = await resolveScenarioPath(scenarioArg);
       const compiledPath = toCompiledPath(resolved);
       const compiledOutput = await readFile(compiledPath, "utf8");
-      console.error(`Compiled file exists at ${relative(playgroundRoot, compiledPath)} (${compiledOutput.length} bytes).`);
+      console.error(
+        `Compiled file exists at ${relative(playgroundRoot, compiledPath)} (${compiledOutput.length} bytes).`,
+      );
     }
-  } catch {}
+  } catch {
+    // Ignore secondary diagnostics failures and preserve the original error.
+  }
 
   process.exitCode = 1;
 });

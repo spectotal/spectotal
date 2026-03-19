@@ -1,4 +1,8 @@
-import type { CompilePlan, DraftDocumentAst, CanonicalDocumentAst } from "@spectotal/ast";
+import type {
+  CompilePlan,
+  DraftDocumentAst,
+  CanonicalDocumentAst,
+} from "@spectotal/ast";
 import type { NodeSelector } from "@spectotal/ast-query";
 import type { ProfileSchema } from "@spectotal/ast-schema";
 import type { ValidationIssue } from "@spectotal/ast-validate";
@@ -16,12 +20,18 @@ export interface ProfileParser {
 
 export interface ProfileNormalizer {
   readonly name: string;
-  normalize(ast: DraftDocumentAst, plan: CompilePlan): Promise<CanonicalDocumentAst>;
+  normalize(
+    ast: DraftDocumentAst,
+    plan: CompilePlan,
+  ): Promise<CanonicalDocumentAst>;
 }
 
 export interface ProfileValidator {
   readonly name: string;
-  validate(ast: CanonicalDocumentAst, plan: CompilePlan): Promise<readonly ValidationIssue[]>;
+  validate(
+    ast: CanonicalDocumentAst,
+    plan: CompilePlan,
+  ): Promise<readonly ValidationIssue[]>;
 }
 
 export interface SelectorRegistry {
@@ -30,9 +40,11 @@ export interface SelectorRegistry {
 
 export interface SpectotalProfile {
   readonly id: string;
+  // Structural schema bundle consumed by ast-validate and ast-patch.
   readonly schema: ProfileSchema;
   readonly parser?: ProfileParser;
   readonly normalizers?: readonly ProfileNormalizer[];
+  // Semantic validators remain profile-owned and run above the structural layer.
   readonly validators?: readonly ProfileValidator[];
   readonly selectors?: SelectorRegistry;
 }

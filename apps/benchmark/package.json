@@ -1,0 +1,16 @@
+{
+  "name": "@spectotal/benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "bench": "pnpm run build && node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@spectotal/ast": "workspace:*",
+    "@spectotal/ast-patch": "workspace:*",
+    "@spectotal/ast-validate": "workspace:*",
+    "@spectotal/profile-w3c": "workspace:*"
+  }
+}

@@ -11,11 +11,15 @@ export interface AstNode {
   readonly id?: NodeId;
   readonly children?: readonly AstNode[];
   readonly provenance?: Provenance;
+  readonly [field: string]: unknown;
 }
 
-export interface CanonicalAstNode extends Omit<AstNode, "children" | "provenance"> {
+export interface CanonicalAstNode {
+  readonly kind: string;
+  readonly id?: NodeId;
   readonly children?: readonly CanonicalAstNode[];
   readonly provenance: Provenance;
+  readonly [field: string]: unknown;
 }
 
 export interface CanonicalDocumentAst {

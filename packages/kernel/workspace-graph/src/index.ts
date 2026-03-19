@@ -66,11 +66,20 @@ export interface WorkspaceOrderResult extends WorkspaceValidationResult {
   readonly order: readonly DocumentId[];
 }
 
-export function mergeWorkspaceAndDocumentConfig(workspaceConfig: WorkspaceConfig, document: WorkspaceInputDocument): CompilePlan {
+export function mergeWorkspaceAndDocumentConfig(
+  workspaceConfig: WorkspaceConfig,
+  document: WorkspaceInputDocument,
+): CompilePlan {
   return {
     profileId: document.config?.profileId ?? workspaceConfig.profileId,
-    options: { ...(workspaceConfig.options ?? {}), ...(document.config?.options ?? {}) },
-    featureFlags: { ...(workspaceConfig.featureFlags ?? {}), ...(document.config?.featureFlags ?? {}) },
+    options: {
+      ...(workspaceConfig.options ?? {}),
+      ...(document.config?.options ?? {}),
+    },
+    featureFlags: {
+      ...(workspaceConfig.featureFlags ?? {}),
+      ...(document.config?.featureFlags ?? {}),
+    },
     inputs: [document.uri],
   };
 }
@@ -91,7 +100,9 @@ export function buildWorkspacePlan(
   };
 }
 
-export function validateWorkspaceGraph(graph: WorkspaceGraph): WorkspaceValidationResult {
+export function validateWorkspaceGraph(
+  graph: WorkspaceGraph,
+): WorkspaceValidationResult {
   const diagnostics: WorkspaceDiagnostic[] = [];
   const adjacency = new Map<DocumentId, DocumentId[]>();
   const visiting = new Set<DocumentId>();
@@ -107,7 +118,8 @@ export function validateWorkspaceGraph(graph: WorkspaceGraph): WorkspaceValidati
   function dfs(node: DocumentId): void {
     if (visiting.has(node)) {
       const cycleStart = path.indexOf(node);
-      const cycle = cycleStart >= 0 ? path.slice(cycleStart).concat(node) : [node];
+      const cycle =
+        cycleStart >= 0 ? path.slice(cycleStart).concat(node) : [node];
       diagnostics.push({
         code: "workspace-cycle",
         severity: "error",
@@ -131,9 +143,12 @@ export function validateWorkspaceGraph(graph: WorkspaceGraph): WorkspaceValidati
   return { valid: diagnostics.length === 0, diagnostics };
 }
 
-export function topologicallyOrderWorkspace(graph: WorkspaceGraph): WorkspaceOrderResult {
+export function topologicallyOrderWorkspace(
+  graph: WorkspaceGraph,
+): WorkspaceOrderResult {
   const validation = validateWorkspaceGraph(graph);
-  if (!validation.valid) return { valid: false, diagnostics: validation.diagnostics, order: [] };
+  if (!validation.valid)
+    return { valid: false, diagnostics: validation.diagnostics, order: [] };
 
   const inDegree = new Map<DocumentId, number>();
   const adjacency = new Map<DocumentId, DocumentId[]>();
@@ -148,7 +163,9 @@ export function topologicallyOrderWorkspace(graph: WorkspaceGraph): WorkspaceOrd
     inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
   }
 
-  const queue = [...inDegree.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+  const queue = [...inDegree.entries()]
+    .filter(([, d]) => d === 0)
+    .map(([id]) => id);
   const order: DocumentId[] = [];
 
   while (queue.length > 0) {

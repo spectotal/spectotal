@@ -1,6 +1,10 @@
 import type { DraftDocumentAst } from "@spectotal/ast";
-import type { ProfileSchema } from "@spectotal/ast-schema";
-import type { ProfileParser, ProfileParseContext, SpectotalProfile } from "@spectotal/profile-core";
+import type {
+  ProfileParser,
+  ProfileParseContext,
+  SpectotalProfile,
+} from "@spectotal/profile-core";
+import { w3cSchema } from "./generated/w3c.schema.generated.js";
 
 export interface MdastNode {
   readonly type: string;
@@ -15,77 +19,22 @@ export interface W3cMarkdownParseResult {
   readonly diagnostics: readonly string[];
 }
 
-export const w3cSchema: ProfileSchema = {
-  profileId: "w3c",
-  rootKind: "document",
-  nodes: {
-    document: {
-      kind: "document",
-      children: { accepts: ["heading", "section", "paragraph", "note", "example", "issue"] }
-    },
-    section: {
-      kind: "section",
-      children: { accepts: ["heading", "section", "paragraph", "note", "example", "issue", "requirement"] }
-    },
-    heading: {
-      kind: "heading",
-      fields: {
-        level: { type: "number", required: true }
-      },
-      children: { accepts: ["text"], minItems: 1 }
-    },
-    paragraph: {
-      kind: "paragraph",
-      children: { accepts: ["text"], minItems: 1 }
-    },
-    text: {
-      kind: "text",
-      fields: {
-        value: { type: "string", required: true }
-      }
-    },
-    requirement: {
-      kind: "requirement",
-      fields: {
-        requirementId: { type: "string", required: true }
-      },
-      children: { accepts: ["paragraph", "note", "example"] }
-    },
-    note: {
-      kind: "note",
-      fields: {
-        tone: { type: "string" }
-      },
-      children: { accepts: ["paragraph"] }
-    },
-    example: {
-      kind: "example",
-      children: { accepts: ["heading", "paragraph"] }
-    },
-    issue: {
-      kind: "issue",
-      fields: {
-        issueId: { type: "string", required: true }
-      },
-      children: { accepts: ["heading", "paragraph"] }
-    }
-  }
-};
-
 export const W3C_MARKDOWN_PARSER: ProfileParser = {
   name: "w3c-markdown-parser",
   async parse(context: ProfileParseContext): Promise<DraftDocumentAst> {
     return {
       root: {
         kind: "document",
-        children: [] ,
+        children: [],
       },
       profileId: context.plan.profileId,
     };
   },
 };
 
-export async function parseW3cMarkdownDocument(context: ProfileParseContext): Promise<W3cMarkdownParseResult> {
+export async function parseW3cMarkdownDocument(
+  context: ProfileParseContext,
+): Promise<W3cMarkdownParseResult> {
   const draft = await W3C_MARKDOWN_PARSER.parse(context);
   return {
     mdast: { type: "root" },
@@ -99,3 +48,39 @@ export const W3C_PROFILE: SpectotalProfile = {
   schema: w3cSchema,
   parser: W3C_MARKDOWN_PARSER,
 };
+
+export {
+  classifyW3cHtmlTag,
+  normalizeHtmlTagName,
+  type W3cHtmlNodeKind,
+} from "./parse/parse-html-node.js";
+export { w3cSchemaSource } from "./schema/w3c.schema-source.js";
+export {
+  w3cNodeSchemas,
+  w3cProfileId,
+  w3cRootKind,
+} from "./generated/w3c.metadata.generated.js";
+export { w3cPatchRulesByKind } from "./generated/w3c.rules.generated.js";
+export { w3cSchema } from "./generated/w3c.schema.generated.js";
+export {
+  validateW3cDocument,
+  validateW3cNode,
+  validateW3cRoot,
+  w3cValidators,
+} from "./generated/w3c.validators.generated.js";
+export type {
+  W3cDocumentNode,
+  W3cExampleNode,
+  W3cFlowElementNode,
+  W3cHeadingNode,
+  W3cIssueNode,
+  W3cNode,
+  W3cNodeKind,
+  W3cNoteNode,
+  W3cParagraphNode,
+  W3cPhrasingElementNode,
+  W3cRequirementNode,
+  W3cSectionNode,
+  W3cTextNode,
+  W3cVoidElementNode,
+} from "./generated/w3c.types.generated.js";

@@ -8,7 +8,12 @@ import type {
 } from "@spectotal/ast";
 import { applyPatches, type AstPatch } from "@spectotal/ast-patch";
 import { findAll, findFirst, visit } from "@spectotal/ast-query";
-import { w3cSchema } from "@spectotal/profile-w3c";
+import { validateCanonicalAst } from "@spectotal/ast-validate";
+import {
+  validateW3cDocument,
+  w3cNodeSchemas,
+  w3cSchema,
+} from "@spectotal/profile-w3c";
 
 function synthetic(reason: string): Provenance {
   return { kind: "synthetic", reason };
@@ -18,6 +23,7 @@ function textNode(id: string, value: string): AstNode {
   return {
     kind: "text",
     id,
+    value,
     provenance: synthetic(`value=${value}`),
   };
 }
@@ -26,15 +32,6 @@ function paragraph(id: string, value: string): AstNode {
   return {
     kind: "paragraph",
     id,
-    children: [textNode(`${id}-text`, value)],
-  };
-}
-
-function heading(id: string, level: number, value: string): AstNode {
-  return {
-    kind: "heading",
-    id,
-    provenance: synthetic(`level=${level}`),
     children: [textNode(`${id}-text`, value)],
   };
 }
@@ -132,7 +129,7 @@ export const draftDocumentAst: DraftDocumentAst = {
 
 function toCanonicalNode(node: AstNode, reason: string): CanonicalAstNode {
   const { children: draftChildren, provenance, ...rest } = node;
-  const children = node.children?.map((child, index) =>
+  const children = draftChildren?.map((child, index) =>
     toCanonicalNode(child, `${reason}/children/${index}`),
   );
 
@@ -163,11 +160,19 @@ function findPathById(root: AstNode, targetId: string): AstPath | undefined {
   return found;
 }
 
-function canonicalParagraph(id: string, value: string, reason: string): CanonicalAstNode {
+function canonicalParagraph(
+  id: string,
+  value: string,
+  reason: string,
+): CanonicalAstNode {
   return toCanonicalNode(paragraph(id, value), reason);
 }
 
-function canonicalNote(id: string, value: string, reason: string): CanonicalAstNode {
+function canonicalNote(
+  id: string,
+  value: string,
+  reason: string,
+): CanonicalAstNode {
   return toCanonicalNode(
     {
       kind: "note",
@@ -180,13 +185,14 @@ function canonicalNote(id: string, value: string, reason: string): CanonicalAstN
 
 function buildQuerySummary() {
   const firstSection = findFirst(draftDocumentAst.root, { kind: "section" });
-  const paragraphIds = findAll(draftDocumentAst.root, { kind: "paragraph" }).map(
-    (node) => node.id ?? null,
-  );
+  const paragraphIds = findAll(draftDocumentAst.root, {
+    kind: "paragraph",
+  }).map((node) => node.id ?? null);
   const noteIds = findAll(draftDocumentAst.root, { kind: "note" }).map(
     (node) => node.id ?? null,
   );
-  const issueParagraphPath = findPathById(draftDocumentAst.root, "issue-paragraph") ?? null;
+  const issueParagraphPath =
+    findPathById(draftDocumentAst.root, "issue-paragraph") ?? null;
   let headingCount = 0;
 
   visit(draftDocumentAst.root, (node) => {
@@ -264,12 +270,16 @@ export default async function run(): Promise<unknown> {
   const canonicalBefore = buildCanonicalDocument();
   const validPatches = buildValidPatches();
   const invalidPatches = buildInvalidPatches();
-
+  const canonicalValidation = validateCanonicalAst(canonicalBefore, w3cSchema);
+  const generatedValidationIssues = validateW3cDocument(canonicalBefore);
 
   return {
     draft: draftDocumentAst,
     queries: buildQuerySummary(),
     canonicalBefore,
+    canonicalValidation,
+    generatedValidationIssues,
+    rootAcceptsKinds: w3cNodeSchemas.document.children?.accepts ?? [],
     validPatches,
     validResult: applyPatches(canonicalBefore, w3cSchema, validPatches),
     invalidPatches,

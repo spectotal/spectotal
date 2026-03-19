@@ -1,16 +1,15 @@
 // Verified through apps/playground/tsconfig.verify.json against built package exports.
-import { buildWorkspacePlan, topologicallyOrderWorkspace } from "@spectotal/workspace-graph";
+import {
+  buildWorkspacePlan,
+  topologicallyOrderWorkspace,
+} from "@spectotal/workspace-graph";
 
 async function main(): Promise<void> {
-  const plan = buildWorkspacePlan(
-    "workspace-valid",
-    { profileId: "w3c" },
-    [
-      { documentId: "A", uri: "fixtures/workspace/valid/A.md" },
-      { documentId: "B", uri: "fixtures/workspace/valid/B.md" },
-      { documentId: "C", uri: "fixtures/workspace/valid/C.md" },
-    ],
-  );
+  const plan = buildWorkspacePlan("workspace-valid", { profileId: "w3c" }, [
+    { documentId: "A", uri: "fixtures/workspace/valid/A.md" },
+    { documentId: "B", uri: "fixtures/workspace/valid/B.md" },
+    { documentId: "C", uri: "fixtures/workspace/valid/C.md" },
+  ]);
 
   const result = topologicallyOrderWorkspace({
     workspaceId: plan.workspaceId,

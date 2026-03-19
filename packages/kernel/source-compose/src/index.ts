@@ -32,11 +32,21 @@ export interface CompositionResult {
   readonly diagnostics: readonly CompositionDiagnostic[];
 }
 
-export function composeSingleMarkdownSource(entryUri: string, content: string): CompositionResult {
+export function composeSingleMarkdownSource(
+  entryUri: string,
+  content: string,
+): CompositionResult {
   return {
     source: {
       entryUri,
-      fragments: [{ fragmentId: `${entryUri}:0`, uri: entryUri, format: "markdown", content }],
+      fragments: [
+        {
+          fragmentId: `${entryUri}:0`,
+          uri: entryUri,
+          format: "markdown",
+          content,
+        },
+      ],
       includeDirectives: [],
     },
     diagnostics: [],

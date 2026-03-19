@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "play": "node --import ./scripts/register-source-runtime.mjs ./scripts/run-scenario.mjs --source",
+    "typecheck": "tsc --noEmit -p tsconfig.verify.json && tsc --noEmit -p tsconfig.scenarios.json",
     "scenario": "pnpm --dir ../.. run build && pnpm exec tsc -p tsconfig.scenarios.json && node scripts/run-scenario.mjs",
     "rs": "node scripts/run-scenario.mjs"
   },
@@ -11,6 +12,7 @@
     "@spectotal/ast": "workspace:*",
     "@spectotal/ast-patch": "workspace:*",
     "@spectotal/ast-query": "workspace:*",
+    "@spectotal/ast-validate": "workspace:*",
     "@spectotal/profile-w3c": "workspace:*",
     "@spectotal/source-compose": "workspace:*",
     "@spectotal/workspace-graph": "workspace:*"
