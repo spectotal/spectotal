@@ -28,9 +28,19 @@ export interface CompositionPartInclude {
 
 export type CompositionPart = CompositionPartContent | CompositionPartInclude;
 
+export interface CompositionAdapterDiagnostic extends Diagnostic {
+  readonly line?: number;
+  readonly column?: number;
+}
+
+export interface CompositionAnalysis {
+  readonly parts: readonly CompositionPart[];
+  readonly diagnostics: readonly CompositionAdapterDiagnostic[];
+}
+
 export interface CompositionAdapter {
   readonly name: string;
-  split(source: LoadedSource): Promise<readonly CompositionPart[]>;
+  analyze(source: LoadedSource): Promise<CompositionAnalysis>;
 }
 
 export interface ComposedInclude {
@@ -119,10 +129,17 @@ async function composeFragments(options: {
   stack: readonly URL[];
   ancestry: readonly string[];
 }): Promise<readonly SourceFragment[]> {
-  const parts = await options.adapter.split(options.source);
+  const analysis = await options.adapter.analyze(options.source);
   const fragments: SourceFragment[] = [];
 
-  for (const part of parts) {
+  options.state.diagnostics.push(
+    ...analysis.diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      uri: options.source.url.href,
+    })),
+  );
+
+  for (const part of analysis.parts) {
     if (part.kind === "content") {
       if (part.content.length === 0) continue;
       fragments.push(

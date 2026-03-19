@@ -109,7 +109,7 @@ export async function normalizeW3cDraftDocument(
   ast: DraftDocumentAst,
   _plan: CompilePlan,
 ): Promise<CanonicalDocumentAst> {
-  console.log("normalise plan", _plan);
+  console.log("normalised plan", _plan);
   return {
     profileId: ast.profileId,
     version: "w3c-markdown-v1",

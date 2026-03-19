@@ -6,4 +6,4 @@ Lead text for the parent section.
 
 Detail text before the included conformance section.
 
-::include{src="conformance.md" format="markdown"}
+<section data-include="conformance.md" data-include-format="markdown"></section>

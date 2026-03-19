@@ -6,32 +6,19 @@ import type {
 import type { ProfileParseContext } from "@spectotal/profile-core";
 import type { SourceFragment } from "@spectotal/source-compose";
 import { fromHtml } from "hast-util-from-html";
-import { fromMarkdown } from "mdast-util-from-markdown";
 import {
   classifyW3cHtmlTag,
   normalizeHtmlTagName,
   type W3cHtmlNodeKind,
 } from "./parse-html-node.js";
+import {
+  parseW3cMarkdownRoot,
+  type MdastNode,
+  type Position,
+  type PositionPoint,
+} from "./markdown-frontend.js";
 
-interface PositionPoint {
-  readonly line: number;
-  readonly column: number;
-}
-
-interface Position {
-  readonly start: PositionPoint;
-}
-
-export interface MdastNode {
-  readonly type: string;
-  readonly value?: string;
-  readonly depth?: number;
-  readonly url?: string;
-  readonly title?: string | null;
-  readonly ordered?: boolean;
-  readonly children?: readonly MdastNode[];
-  readonly position?: Position;
-}
+export type { MdastNode } from "./markdown-frontend.js";
 
 interface HastNode {
   readonly type: string;
@@ -640,6 +627,18 @@ function mapBlockNodes(
         );
         break;
 
+      case "leafDirective":
+        if (node.name === "include") break;
+        diagnostics.push(
+          `Unsupported block directive: ${node.name ?? "<unnamed>"}`,
+        );
+        break;
+
+      case "containerDirective":
+      case "textDirective":
+        diagnostics.push(`Unsupported directive node type: ${node.type}`);
+        break;
+
       default:
         diagnostics.push(`Unsupported block mdast node type: ${node.type}`);
         break;
@@ -657,7 +656,7 @@ export async function parseW3cMarkdown(
   const draftChildren: AstNode[] = [];
 
   for (const fragment of context.source.fragments) {
-    const root = fromMarkdown(fragment.content) as MdastNode;
+    const root = parseW3cMarkdownRoot(fragment.content);
     const children = root.children ?? [];
 
     mdastChildren.push(...children);

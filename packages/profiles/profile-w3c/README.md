@@ -9,7 +9,7 @@ flowchart TD
   Host["Host runtime\n(browser/server/test)"]
   Entry["Entry URL or loaded source"]
   W3CCompose["composeW3cSourceFromUrl /\ncomposeW3cSource"]
-  Adapter["W3C markdown composition adapter\nrecognizes ::: include ... :::"]
+  Adapter["W3C markdown composition adapter\nparses ::include{src=...}\nand ReSpec-like data-include markers"]
   Kernel["kernel/source-compose\nresolve + load + recurse + cycle checks\nsplice fragments + provenance ancestry"]
   Composed["ComposedSource\nfragments[] + includes[]"]
   Parse["parseW3cMarkdownDocument"]
@@ -49,7 +49,7 @@ flowchart LR
 
 The important boundary is:
 
-- `@spectotal/profile-w3c` owns markdown include recognition and mdast-to-W3C parsing.
+- `@spectotal/profile-w3c` owns parser-backed include recognition and mdast-to-W3C parsing.
 - `@spectotal/source-compose` stays markup-agnostic and only handles composition mechanics.
 - Assembly happens after parsing, so headings are first emitted as flat draft flow and only later normalized into `section` nodes.
 

@@ -138,11 +138,11 @@ describe("@spectotal/profile-w3c", () => {
     );
   });
 
-  it("keeps markdown include recognition in the W3C profile and composes through the generic kernel engine", async () => {
+  it("composes canonical directive includes through the generic kernel engine", async () => {
     const root = new URL("https://example.test/spec/index.md");
     const host = createHost({
       "https://example.test/spec/index.md":
-        "# Title\n::: include conformance.md :::\n",
+        '# Title\n::include{src="conformance.md" format="markdown"}\n',
       "https://example.test/spec/conformance.md": "## Conformance\nBody\n",
     });
 
@@ -172,6 +172,227 @@ describe("@spectotal/profile-w3c", () => {
           sourceUri: root.href,
           targetUri: "https://example.test/spec/conformance.md",
           line: 2,
+        },
+      ],
+    });
+  });
+
+  it("defaults omitted directive include format to markdown", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n::include{src="conformance.md"}\n',
+      "https://example.test/spec/conformance.md": "## Conformance\nBody\n",
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.source?.includes).toEqual([
+      {
+        sourceUri: root.href,
+        targetUri: "https://example.test/spec/conformance.md",
+        line: 2,
+      },
+    ]);
+    expect(result.source?.fragments).toEqual([
+      {
+        fragmentId: `${root.href}#fragment-0`,
+        uri: root.href,
+        content: "# Title\n",
+        startLine: 1,
+        provenanceChain: [],
+      },
+      {
+        fragmentId: "https://example.test/spec/conformance.md#fragment-1",
+        uri: "https://example.test/spec/conformance.md",
+        content: "## Conformance\nBody\n",
+        startLine: 1,
+        provenanceChain: [root.href],
+      },
+    ]);
+  });
+
+  it("diagnoses directive includes without a src attribute", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n::include{format="markdown"}\nAfter\n',
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.source?.includes).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      code: "w3c-compose-include-missing-src",
+      severity: "error",
+      message: "W3C include directive requires a non-empty `src` attribute.",
+      uri: root.href,
+      line: 2,
+    });
+  });
+
+  it("diagnoses directive includes with unsupported format", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n::include{src="conformance.md" format="html"}\n',
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.source?.includes).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      code: "w3c-compose-include-unsupported-format",
+      severity: "error",
+      message:
+        'W3C include directive only supports format="markdown" in composition, received "html".',
+      uri: root.href,
+      line: 2,
+    });
+  });
+
+  it("composes ReSpec-like HTML include markers when they opt into markdown", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n<section data-include="conformance.md" data-include-format="markdown"></section>\n',
+      "https://example.test/spec/conformance.md": "## Conformance\nBody\n",
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.source?.includes).toEqual([
+      {
+        sourceUri: root.href,
+        targetUri: "https://example.test/spec/conformance.md",
+        line: 2,
+      },
+    ]);
+  });
+
+  it("diagnoses ReSpec-like HTML include markers without markdown format opt-in", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n<section data-include="conformance.md"></section>\n',
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.source?.includes).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      code: "w3c-compose-respec-include-format-required",
+      severity: "error",
+      message:
+        'ReSpec-like include markers must set data-include-format="markdown" for markdown composition.',
+      uri: root.href,
+      line: 2,
+    });
+  });
+
+  it("diagnoses ReSpec-like HTML include markers with empty include targets", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n<section data-include="" data-include-format="markdown"></section>\n',
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.source?.includes).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      code: "w3c-compose-respec-include-missing-target",
+      severity: "error",
+      message:
+        "ReSpec-like include marker requires a non-empty `data-include` attribute.",
+      uri: root.href,
+      line: 2,
+    });
+  });
+
+  it("diagnoses ReSpec-like HTML include markers with unsupported formats", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        '# Title\n<section data-include="conformance.md" data-include-format="html"></section>\n',
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.source?.includes).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      code: "w3c-compose-respec-include-unsupported-format",
+      severity: "error",
+      message:
+        'ReSpec-like include markers only support data-include-format="markdown" in composition, received "html".',
+      uri: root.href,
+      line: 2,
+    });
+  });
+
+  it("preserves content slices and line numbers around multiple include markers", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        'Intro\n::include{src="first.md" format="markdown"}\nBetween\n\n<section data-include="second.md" data-include-format="markdown"></section>\nOutro\n',
+      "https://example.test/spec/first.md": "First\n",
+      "https://example.test/spec/second.md": "Second\n",
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.source).toEqual({
+      entryUri: root.href,
+      fragments: [
+        {
+          fragmentId: `${root.href}#fragment-0`,
+          uri: root.href,
+          content: "Intro\n",
+          startLine: 1,
+          provenanceChain: [],
+        },
+        {
+          fragmentId: "https://example.test/spec/first.md#fragment-1",
+          uri: "https://example.test/spec/first.md",
+          content: "First\n",
+          startLine: 1,
+          provenanceChain: [root.href],
+        },
+        {
+          fragmentId: `${root.href}#fragment-2`,
+          uri: root.href,
+          content: "Between\n\n",
+          startLine: 3,
+          provenanceChain: [],
+        },
+        {
+          fragmentId: "https://example.test/spec/second.md#fragment-3",
+          uri: "https://example.test/spec/second.md",
+          content: "Second\n",
+          startLine: 1,
+          provenanceChain: [root.href],
+        },
+        {
+          fragmentId: `${root.href}#fragment-4`,
+          uri: root.href,
+          content: "Outro\n",
+          startLine: 6,
+          provenanceChain: [],
+        },
+      ],
+      includes: [
+        {
+          sourceUri: root.href,
+          targetUri: "https://example.test/spec/first.md",
+          line: 2,
+        },
+        {
+          sourceUri: root.href,
+          targetUri: "https://example.test/spec/second.md",
+          line: 5,
         },
       ],
     });

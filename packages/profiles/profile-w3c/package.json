@@ -27,7 +27,9 @@
     "@spectotal/ast-schema": "workspace:*",
     "@spectotal/source-compose": "workspace:*",
     "hast-util-from-html": "^2.0.3",
+    "mdast-util-directive": "^3.1.0",
     "mdast-util-from-markdown": "^2.0.3",
+    "micromark-extension-directive": "^4.0.0",
     "@spectotal/profile-core": "workspace:*"
   },
   "devDependencies": {
