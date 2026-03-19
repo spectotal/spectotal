@@ -5,32 +5,32 @@ Define the stable compiler stage boundaries for Spectotal.
 
 ## Requirements
 
-### Requirement: Workspace planning before document parse
+### Requirement: Workspace planning before document stages
 The compiler SHALL build and validate workspace-level planning before dependency-ordered document stages execute.
 
 #### Scenario: Multiple documents share defaults
 - GIVEN a workspace contains shared defaults and document-local overrides
 - WHEN planning completes
 - THEN the compiler has a workspace plan and effective document plans
-- AND parse can run with the correct effective config for each document
+- AND document stages can run with the correct effective config for each document
 
-### Requirement: Source composition before profile parse
-The compiler SHALL compose document includes before profile parsing.
+### Requirement: Source composition before profile stages
+The compiler SHALL compose document includes before profile parsing and profile assembly.
 
-#### Scenario: Markdown include is present
-- GIVEN a markdown document includes another markdown document
+#### Scenario: Include is present
+- GIVEN a document includes another source
 - WHEN compilation proceeds
-- THEN source composition produces ordered composed input
-- AND profile parsing sees the included content in flow order
+- THEN source composition produces composed content with preserved provenance
+- AND later profile stages receive that composed content as input
 
-### Requirement: Section assembly after composed parsing
-The compiler SHALL assemble heading-based hierarchy after composed content is parsed into a combined draft flow.
+### Requirement: Profile assembly produces canonical AST
+The compiler SHALL run profile-defined assembly after profile parsing and before derivation stages.
 
-#### Scenario: Included h2 follows local h3
-- GIVEN a local h3 is followed by an include containing an h2
-- WHEN normalization assembles sections
-- THEN the h2 closes the deeper heading scope as needed
-- AND it becomes a sibling-level section rather than a child of the previous h3 section
+#### Scenario: Profile produces canonical structure
+- GIVEN profile parsing has produced draft profile content
+- WHEN profile assembly runs
+- THEN the compiler produces canonical AST according to profile-defined assembly rules
+- AND later derivation stages operate on that canonical AST
 
 ### Requirement: Read-only derivations
 Derivation stages SHALL not mutate canonical AST.
