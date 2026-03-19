@@ -1,8 +1,16 @@
 export type NodeId = string;
 export type AstPath = readonly number[];
 
+export interface SourceProvenance {
+  readonly kind: "source";
+  readonly uri: string;
+  readonly line?: number;
+  readonly column?: number;
+  readonly includeAncestors?: readonly string[];
+}
+
 export type Provenance =
-  | { kind: "source"; uri: string; line?: number; column?: number }
+  | SourceProvenance
   | { kind: "patch"; patchId: string; plugin?: string; basedOn?: NodeId[] }
   | { kind: "synthetic"; reason: string };
 

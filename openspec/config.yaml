@@ -9,10 +9,11 @@ context: |
   - AST mutation MUST happen only through @spectotal/ast-patch.
   - Config normalization MUST produce a CompilePlan; compiler state MUST NOT be stored in AST metadata.
   - Derivations MUST be read-only over a canonical AST.
-  - Profiles MUST ship schema, parsing, normalizers, validators, selectors, and fixtures.
+  - Profiles MUST ship schema, parsing, assembly, normalizers, validators, selectors, and fixtures.
   - Multi-document compilation is first-class and MUST be modeled through a workspace graph package.
   - A document AST remains a tree; cross-document relationships live in the workspace graph, not inside the AST itself.
-  - Include expansion MUST happen before section hierarchy is assembled.
+  - Source composition MUST happen before profile parsing and profile assembly.
+  - The kernel MUST remain agnostic to heading, section, and domain-specific structural semantics.
   - For v1, markdown parsing lives in @spectotal/profile-w3c and maps mdast directly to AstDraft.
   - For v1, standalone .html includes are out of scope.
   - Every behavior change MUST update playground fixtures and manual API examples.
@@ -28,23 +29,33 @@ context: |
   Composition policy:
   - V1 entry documents are markdown-first.
   - V1 includes are markdown-first.
-  - Includes splice source flow rather than attaching content to the deepest open AST subtree.
-  - Heading-based section hierarchy is assembled after included content is parsed into one combined draft flow.
+  - Source composition preserves original provenance and include-site provenance.
+  - Structural includes participate in later profile assembly.
+  - Non-structural includes remain embedded unless the active profile defines otherwise.
+  - Source composition MUST NOT hardcode heading or section semantics.
+
+  V1 profile-w3c policy:
+  - The W3C profile assembles heading-based section hierarchy from composed markdown content.
+  - Included markdown uses include-site provenance as assembly context.
+  - Mermaid, WebIDL, and similar assets remain embedded nodes and do not participate in heading hierarchy assembly.
 
 rules:
   proposal:
     - State scope and non-goals explicitly.
     - For cross-package changes, list impacted packages and unchanged packages.
-    - For workspace, source-composition, or parsing changes, explain config layering, include behavior, and graph impact.
+    - For workspace, source-composition, parsing, or assembly changes, explain config layering, include behavior, and graph impact.
     - State which playground fixtures and examples will be updated.
+
   design:
     - Kernel packages must remain semantic-agnostic.
     - Do not introduce direct AST mutation outside @spectotal/ast-patch.
-    - Parsing belongs in the active profile package unless two or more profiles demonstrably share the same parsing layer.
-    - Describe how the change affects workspace config, document config, workspace graph, composed source, mdast-to-draft mapping, canonical AST, and derivations when relevant.
+    - Parsing and assembly belong in the active profile package unless two or more profiles demonstrably share the same layer.
+    - Describe how the change affects workspace config, document config, workspace graph, composed source, AstDraft, canonical AST, profile assembly, and derivations when relevant.
+
   tasks:
     - Break work into small package-scoped tasks.
     - Add cycle and include fixture coverage when behavior changes.
     - Add or update manual API examples in apps/playground/examples for every behavior change.
+
   spec:
-    - Update spec deltas for any AST contract, patch operation, profile contract, pipeline boundary, workspace graph change, source-composition change, or playground verification rule.
+    - Update spec deltas for any AST contract, patch operation, profile contract, pipeline boundary, workspace graph change, source-composition change, profile-assembly change, or playground verification rule.

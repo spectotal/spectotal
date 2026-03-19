@@ -25,6 +25,9 @@
   "dependencies": {
     "@spectotal/ast": "workspace:*",
     "@spectotal/ast-schema": "workspace:*",
+    "@spectotal/source-compose": "workspace:*",
+    "hast-util-from-html": "^2.0.3",
+    "mdast-util-from-markdown": "^2.0.3",
     "@spectotal/profile-core": "workspace:*"
   },
   "devDependencies": {

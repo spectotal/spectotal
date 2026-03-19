@@ -2,4 +2,4 @@
 
 ## Conformance
 
-Keywords MUST, SHOULD, and MAY are normative terms.
+Keywords MUST, SHOULD, and MAY are normative terms for this specification.

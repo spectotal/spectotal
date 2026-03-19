@@ -1,7 +1,9 @@
 ## Headline section
-text
+
+Lead text for the parent section.
 
 ### Details
-text
+
+Detail text before the included conformance section.
 
 ::: include conformance.md :::
