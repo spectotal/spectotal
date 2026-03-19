@@ -46,6 +46,11 @@ export const W3C_PROFILE: SpectotalProfile = {
 };
 
 export {
+  composeW3cSource,
+  composeW3cSourceFromUrl,
+  W3C_MARKDOWN_COMPOSITION_ADAPTER,
+} from "./compose/compose-document.js";
+export {
   classifyW3cHtmlTag,
   normalizeHtmlTagName,
   type W3cHtmlNodeKind,

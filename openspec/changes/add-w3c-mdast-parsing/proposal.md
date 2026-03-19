@@ -6,7 +6,7 @@ This change establishes the first real W3C markdown pipeline around the `syntax-
 
 Scope:
 - Implement a real mdast-based W3C markdown parser inside `@spectotal/profile-w3c`.
-- Implement structural markdown include composition and provenance preservation needed by that parser.
+- Implement a profile-guided composition boundary where `@spectotal/profile-w3c` owns markdown include recognition and `@spectotal/source-compose` owns generic composition, cycle checks, fragment splicing, and provenance preservation.
 - Keep source composition isomorphic so the same composition logic can run in both server and browser environments.
 - Implement W3C assembly/normalization that turns parsed heading flow into canonical section structure.
 - Update playground fixtures and manual examples to demonstrate the new behavior.
@@ -21,8 +21,8 @@ Non-goals:
 
 - Add mdast-based parsing to `@spectotal/profile-w3c` so headings, paragraphs, text, directives, and supported HTML/custom tags map into W3C draft nodes instead of an empty draft document.
 - Use the `syntax-tree` markdown ecosystem as the parser frontend, keeping mdast as the main profile-local source tree and using a selective raw HTML branch only when W3C needs actual element/tag structure.
-- Define how structural include directives are recognized from markdown-first input and lay the directive-parsing foundation for later W3C semantic containers such as note/example/issue/requirement blocks.
-- Extend markdown source composition so structural includes expand before parsing, preserve include-site provenance, and provide parser-consumable fragment metadata rather than a single-fragment stub.
+- Define how structural include directives are recognized from markdown-first input inside `@spectotal/profile-w3c` and lay the directive-parsing foundation for later W3C semantic containers such as note/example/issue/requirement blocks.
+- Refactor source composition so the kernel expands profile-supplied include parts before parsing, preserves include-site provenance, and provides parser-consumable fragment metadata rather than a single-fragment stub.
 - Keep markdown source composition runtime-agnostic by using browser-safe composition logic rather than a Node-only filesystem-bound implementation.
 - Use an async loader/resolver contract based on `URL` objects so browser and server hosts share the same composition interface.
 - Extend source provenance so draft and canonical nodes can carry include ancestry and source locations without pushing section semantics into the kernel.
@@ -38,9 +38,9 @@ Non-goals:
 
 ### Modified Capabilities
 - `kernel-ast`: Source provenance carries enough include ancestry for later profile assembly without encoding profile semantics in the kernel.
-- `profile-parsing`: W3C parsing moves from a stub to a concrete mdast-based parser with profile-local HTML/tag handling and provenance capture for later assembly.
+- `profile-parsing`: W3C parsing moves from a stub to a concrete mdast-based parser with profile-local HTML/tag handling, markdown include recognition, and provenance capture for later assembly.
 - `profile-assembly`: W3C assembly uses parsed heading flow and include-site provenance to build canonical section hierarchy from composed markdown.
-- `source-composition`: Structural markdown includes expand into composed flow with fragment provenance that downstream W3C parsing and assembly can consume.
+- `source-composition`: A generic kernel composition engine expands profile-supplied include parts into composed flow with fragment provenance that downstream W3C parsing and assembly can consume.
 
 ## Impact
 
@@ -58,7 +58,6 @@ Unchanged packages:
 - `packages/kernel/workspace-graph`
 - `packages/kernel/pipeline`
 - `packages/kernel/derivations`
-- `packages/profiles/profile-core`
 - `packages/profiles/profile-gherkin`
 
 Dependencies and tooling:
@@ -69,7 +68,7 @@ Dependencies and tooling:
 Config, include behavior, and graph impact:
 - Workspace config layering and document config layering remain unchanged.
 - Workspace graph behavior remains unchanged.
-- Include behavior changes from a stubbed single-fragment composition path to real markdown include expansion with preserved provenance before profile parsing.
+- Include behavior changes from a stubbed single-fragment composition path to profile-guided include expansion with preserved provenance before profile parsing.
 - Composition runtime changes from an effectively local stub to an explicit isomorphic contract that works with browser- or server-provided source loading.
 
 Playground updates:

@@ -1,13 +1,11 @@
 import { readFile } from "node:fs/promises";
 
 import {
-  composeMarkdownSourceFromUrl,
-  type CompositionHost,
-} from "@spectotal/source-compose";
-import {
+  composeW3cSourceFromUrl,
   normalizeW3cDocument,
   parseW3cMarkdownDocument,
 } from "@spectotal/profile-w3c";
+import type { CompositionHost } from "@spectotal/source-compose";
 
 const fileHost: CompositionHost = {
   async resolve(target, from) {
@@ -21,13 +19,17 @@ const fileHost: CompositionHost = {
   },
 };
 
+const fixtureBase = import.meta.url.includes("/dist-scenarios/")
+  ? new URL("../../fixtures/", import.meta.url)
+  : new URL("../fixtures/", import.meta.url);
+
 export function fixtureUrl(pathname: string): URL {
-  return new URL(`../fixtures/${pathname}`, import.meta.url);
+  return new URL(pathname, fixtureBase);
 }
 
 export async function inspectW3cFixture(pathname: string): Promise<unknown> {
   const entryUrl = fixtureUrl(pathname);
-  const composition = await composeMarkdownSourceFromUrl(entryUrl, fileHost);
+  const composition = await composeW3cSourceFromUrl(entryUrl, fileHost);
 
   if (!composition.source) {
     return { composition, parsed: null, canonical: null };

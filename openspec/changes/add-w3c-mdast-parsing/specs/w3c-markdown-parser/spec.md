@@ -1,5 +1,13 @@
 ## ADDED Requirements
 
+### Requirement: W3C profile exposes markdown composition helpers
+The W3C markdown profile SHALL expose profile-owned composition helpers that bind markdown include recognition to the generic kernel composition engine.
+
+#### Scenario: Caller composes W3C markdown source
+- **WHEN** a caller asks the W3C profile to compose a markdown entry document
+- **THEN** the profile recognizes W3C markdown include syntax before parsing
+- **AND** it delegates recursion, loading, cycle detection, and fragment splicing to the generic kernel composition engine
+
 ### Requirement: W3C parser maps markdown flow into W3C draft nodes
 The W3C markdown parser SHALL map markdown headings, paragraphs, and phrasing content into ordered W3C draft nodes before later section assembly runs.
 

@@ -11,6 +11,14 @@ The first implementation SHALL support markdown-first parsing without requiring 
 
 ## ADDED Requirements
 
+### Requirement: Profile owns source-syntax recognition used for composition
+The active profile SHALL own any source-syntax recognition needed to split authored documents into composition parts before parsing.
+
+#### Scenario: W3C markdown include syntax is recognized for composition
+- **WHEN** the W3C profile supports `::: include ... :::` in markdown source
+- **THEN** `@spectotal/profile-w3c` recognizes that syntax for composition
+- **AND** generic kernel packages do not scan raw markdown text for that directive
+
 ### Requirement: Draft nodes preserve source provenance for later assembly
 Profile parsing SHALL emit draft nodes with source provenance sufficient for later profile assembly to interpret include-expanded markdown flow.
 

@@ -1,7 +1,5 @@
 import type { Diagnostic } from "@spectotal/diagnostics";
 
-export type SourceFormat = "markdown" | "unknown";
-
 export interface LoadedSource {
   readonly url: URL;
   readonly content: string;
@@ -16,7 +14,26 @@ export interface CompositionHost {
   readonly load: SourceLoader;
 }
 
-export interface IncludeDirective {
+export interface CompositionPartContent {
+  readonly kind: "content";
+  readonly content: string;
+  readonly startLine: number;
+}
+
+export interface CompositionPartInclude {
+  readonly kind: "include";
+  readonly target: string;
+  readonly line: number;
+}
+
+export type CompositionPart = CompositionPartContent | CompositionPartInclude;
+
+export interface CompositionAdapter {
+  readonly name: string;
+  split(source: LoadedSource): Promise<readonly CompositionPart[]>;
+}
+
+export interface ComposedInclude {
   readonly sourceUri: string;
   readonly targetUri: string;
   readonly line?: number;
@@ -25,7 +42,6 @@ export interface IncludeDirective {
 export interface SourceFragment {
   readonly fragmentId: string;
   readonly uri: string;
-  readonly format: SourceFormat;
   readonly content: string;
   readonly startLine?: number;
   readonly provenanceChain?: readonly string[];
@@ -34,7 +50,7 @@ export interface SourceFragment {
 export interface ComposedSource {
   readonly entryUri: string;
   readonly fragments: readonly SourceFragment[];
-  readonly includeDirectives: readonly IncludeDirective[];
+  readonly includes: readonly ComposedInclude[];
 }
 
 export interface CompositionDiagnostic extends Diagnostic {
@@ -47,26 +63,10 @@ export interface CompositionResult {
   readonly diagnostics: readonly CompositionDiagnostic[];
 }
 
-const INCLUDE_DIRECTIVE_PATTERN = /^\s*:::\s*include\s+(.+?)\s*:::\s*$/;
-
 interface CompositionState {
   readonly diagnostics: CompositionDiagnostic[];
-  readonly includeDirectives: IncludeDirective[];
+  readonly includes: ComposedInclude[];
   nextFragmentId: number;
-}
-
-function detectSourceFormat(url: URL): SourceFormat {
-  const pathname = url.pathname.toLowerCase();
-  if (pathname.endsWith(".md") || pathname.endsWith(".markdown")) {
-    return "markdown";
-  }
-
-  return "unknown";
-}
-
-function splitLines(content: string): readonly string[] {
-  const matches = content.match(/[^\n]*\n|[^\n]+$/g);
-  return matches ?? [];
 }
 
 function createFragment(options: {
@@ -82,33 +82,10 @@ function createFragment(options: {
   return {
     fragmentId,
     uri: options.source.url.href,
-    format: detectSourceFormat(options.source.url),
     content: options.content,
     startLine: options.startLine,
     provenanceChain: options.provenanceChain,
   };
-}
-
-function flushBufferedLines(options: {
-  state: CompositionState;
-  source: LoadedSource;
-  lines: string[];
-  startLine: number | undefined;
-  provenanceChain: readonly string[];
-  fragments: SourceFragment[];
-}): void {
-  if (options.lines.length === 0 || options.startLine === undefined) return;
-
-  options.fragments.push(
-    createFragment({
-      state: options.state,
-      source: options.source,
-      startLine: options.startLine,
-      content: options.lines.join(""),
-      provenanceChain: options.provenanceChain,
-    }),
-  );
-  options.lines.length = 0;
 }
 
 function createCycleDiagnostic(options: {
@@ -137,54 +114,48 @@ function createCycleDiagnostic(options: {
 async function composeFragments(options: {
   source: LoadedSource;
   host: CompositionHost | undefined;
+  adapter: CompositionAdapter;
   state: CompositionState;
   stack: readonly URL[];
   ancestry: readonly string[];
 }): Promise<readonly SourceFragment[]> {
-  const lines = splitLines(options.source.content);
+  const parts = await options.adapter.split(options.source);
   const fragments: SourceFragment[] = [];
-  const bufferedLines: string[] = [];
-  let bufferStartLine: number | undefined;
 
-  for (const [index, line] of lines.entries()) {
-    const lineNumber = index + 1;
-    const includeMatch = INCLUDE_DIRECTIVE_PATTERN.exec(line.trimEnd());
-
-    if (!includeMatch) {
-      if (bufferStartLine === undefined) bufferStartLine = lineNumber;
-      bufferedLines.push(line);
+  for (const part of parts) {
+    if (part.kind === "content") {
+      if (part.content.length === 0) continue;
+      fragments.push(
+        createFragment({
+          state: options.state,
+          source: options.source,
+          startLine: part.startLine,
+          content: part.content,
+          provenanceChain: options.ancestry,
+        }),
+      );
       continue;
     }
-
-    flushBufferedLines({
-      state: options.state,
-      source: options.source,
-      lines: bufferedLines,
-      startLine: bufferStartLine,
-      provenanceChain: options.ancestry,
-      fragments,
-    });
-    bufferStartLine = undefined;
 
     if (!options.host) {
       options.state.diagnostics.push({
         code: "source-compose-host-required",
         severity: "error",
-        message: `Include directive requires a composition host: ${includeMatch[1]}`,
+        message: `Include part requires a composition host: ${part.target}`,
         uri: options.source.url.href,
-        line: lineNumber,
+        line: part.line,
       });
       continue;
     }
 
     const resolvedUrl = await options.host.resolve(
-      includeMatch[1],
+      part.target,
       options.source.url,
     );
-    options.state.includeDirectives.push({
+    options.state.includes.push({
       sourceUri: options.source.url.href,
       targetUri: resolvedUrl.href,
-      line: lineNumber,
+      line: part.line,
     });
 
     if (
@@ -220,21 +191,13 @@ async function composeFragments(options: {
     const includedFragments = await composeFragments({
       source: loadedSource,
       host: options.host,
+      adapter: options.adapter,
       state: options.state,
       stack: [...options.stack, loadedSource.url],
       ancestry: [...options.ancestry, options.source.url.href],
     });
     fragments.push(...includedFragments);
   }
-
-  flushBufferedLines({
-    state: options.state,
-    source: options.source,
-    lines: bufferedLines,
-    startLine: bufferStartLine,
-    provenanceChain: options.ancestry,
-    fragments,
-  });
 
   if (fragments.length === 0) {
     fragments.push(
@@ -251,18 +214,20 @@ async function composeFragments(options: {
   return fragments;
 }
 
-export async function composeMarkdownSource(
+export async function composeSource(
   entry: LoadedSource,
+  adapter: CompositionAdapter,
   host?: CompositionHost,
 ): Promise<CompositionResult> {
   const state: CompositionState = {
     diagnostics: [],
-    includeDirectives: [],
+    includes: [],
     nextFragmentId: 0,
   };
   const fragments = await composeFragments({
     source: entry,
     host,
+    adapter,
     state,
     stack: [entry.url],
     ancestry: [],
@@ -272,21 +237,22 @@ export async function composeMarkdownSource(
     source: {
       entryUri: entry.url.href,
       fragments,
-      includeDirectives: state.includeDirectives,
+      includes: state.includes,
     },
     diagnostics: state.diagnostics,
   };
 }
 
-export async function composeMarkdownSourceFromUrl(
+export async function composeSourceFromUrl(
   entryUrl: URL,
   host: CompositionHost,
+  adapter: CompositionAdapter,
 ): Promise<CompositionResult> {
   const entry = await host.load(entryUrl);
-  return composeMarkdownSource(entry, host);
+  return composeSource(entry, adapter, host);
 }
 
-export function composeSingleMarkdownSource(
+export function composeSingleSource(
   entryUri: string,
   content: string,
 ): CompositionResult {
@@ -297,12 +263,11 @@ export function composeSingleMarkdownSource(
         {
           fragmentId: `${entryUri}:0`,
           uri: entryUri,
-          format: "markdown",
           content,
           provenanceChain: [],
         },
       ],
-      includeDirectives: [],
+      includes: [],
     },
     diagnostics: [],
   };

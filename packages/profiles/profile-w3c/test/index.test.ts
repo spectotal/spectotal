@@ -1,8 +1,10 @@
 import type { Provenance } from "@spectotal/ast";
+import type { CompositionHost } from "@spectotal/source-compose";
 import { describe, expect, it } from "vitest";
 
 import {
   classifyW3cHtmlTag,
+  composeW3cSourceFromUrl,
   normalizeW3cDocument,
   parseW3cMarkdownDocument,
   validateW3cNode,
@@ -23,6 +25,23 @@ function textNode(id: string, value: string) {
     value,
     provenance: provenance(`text:${id}`),
   } as const;
+}
+
+function createHost(files: Readonly<Record<string, string>>): CompositionHost {
+  return {
+    async resolve(target, from) {
+      return new URL(target, from);
+    },
+    async load(url) {
+      const content = files[url.href];
+
+      if (content === undefined) {
+        throw new Error(`Missing fixture for ${url.href}`);
+      }
+
+      return { url, content };
+    },
+  };
 }
 
 describe("@spectotal/profile-w3c", () => {
@@ -119,6 +138,45 @@ describe("@spectotal/profile-w3c", () => {
     );
   });
 
+  it("keeps markdown include recognition in the W3C profile and composes through the generic kernel engine", async () => {
+    const root = new URL("https://example.test/spec/index.md");
+    const host = createHost({
+      "https://example.test/spec/index.md":
+        "# Title\n::: include conformance.md :::\n",
+      "https://example.test/spec/conformance.md": "## Conformance\nBody\n",
+    });
+
+    const result = await composeW3cSourceFromUrl(root, host);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.source).toEqual({
+      entryUri: root.href,
+      fragments: [
+        {
+          fragmentId: `${root.href}#fragment-0`,
+          uri: root.href,
+          content: "# Title\n",
+          startLine: 1,
+          provenanceChain: [],
+        },
+        {
+          fragmentId: "https://example.test/spec/conformance.md#fragment-1",
+          uri: "https://example.test/spec/conformance.md",
+          content: "## Conformance\nBody\n",
+          startLine: 1,
+          provenanceChain: [root.href],
+        },
+      ],
+      includes: [
+        {
+          sourceUri: root.href,
+          targetUri: "https://example.test/spec/conformance.md",
+          line: 2,
+        },
+      ],
+    });
+  });
+
   it("parses simple markdown into draft heading and paragraph nodes", async () => {
     const source = {
       entryUri: "https://example.test/spec/basic.md",
@@ -126,13 +184,12 @@ describe("@spectotal/profile-w3c", () => {
         {
           fragmentId: "basic#0",
           uri: "https://example.test/spec/basic.md",
-          format: "markdown" as const,
           content: "# Title\n\n## Conformance\n\nKeywords MUST.\n",
           startLine: 1,
           provenanceChain: [],
         },
       ],
-      includeDirectives: [],
+      includes: [],
     };
 
     const result = await parseW3cMarkdownDocument({
@@ -175,13 +232,12 @@ describe("@spectotal/profile-w3c", () => {
         {
           fragmentId: "inline#0",
           uri: "https://example.test/spec/inline.md",
-          format: "markdown" as const,
           content: "before <span>*hello*</span> after\n",
           startLine: 1,
           provenanceChain: [],
         },
       ],
-      includeDirectives: [],
+      includes: [],
     };
 
     const result = await parseW3cMarkdownDocument({
@@ -218,13 +274,12 @@ describe("@spectotal/profile-w3c", () => {
         {
           fragmentId: "html#0",
           uri: "https://example.test/spec/html.md",
-          format: "markdown" as const,
           content: "<div>hi <span>x</span></div>\n",
           startLine: 1,
           provenanceChain: [],
         },
       ],
-      includeDirectives: [],
+      includes: [],
     };
 
     const result = await parseW3cMarkdownDocument({
@@ -304,7 +359,6 @@ describe("@spectotal/profile-w3c", () => {
         {
           fragmentId: "root#0",
           uri: entryUri,
-          format: "markdown" as const,
           content: "## Headline section\ntext\n\n### Details\ntext\n\n",
           startLine: 1,
           provenanceChain: [],
@@ -312,13 +366,12 @@ describe("@spectotal/profile-w3c", () => {
         {
           fragmentId: "included#0",
           uri: "https://example.test/spec/conformance.md",
-          format: "markdown" as const,
           content: "## Conformance\n\nKeywords MUST.\n",
           startLine: 1,
           provenanceChain: [entryUri],
         },
       ],
-      includeDirectives: [
+      includes: [
         {
           sourceUri: entryUri,
           targetUri: "https://example.test/spec/conformance.md",

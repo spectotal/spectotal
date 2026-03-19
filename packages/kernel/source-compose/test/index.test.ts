@@ -1,11 +1,62 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  composeMarkdownSource,
-  composeMarkdownSourceFromUrl,
-  composeSingleMarkdownSource,
+  composeSingleSource,
+  composeSource,
+  composeSourceFromUrl,
+  type CompositionAdapter,
   type CompositionHost,
+  type CompositionPart,
 } from "../src/index.js";
+
+const INCLUDE_PATTERN = /^\s*\[\[\s*include:(.+?)\s*\]\]\s*$/;
+
+function splitLines(content: string): readonly string[] {
+  const matches = content.match(/[^\n]*\n|[^\n]+$/g);
+  return matches ?? [];
+}
+
+const fixtureAdapter: CompositionAdapter = {
+  name: "fixture-adapter",
+  async split(source) {
+    const parts: CompositionPart[] = [];
+    const lines = splitLines(source.content);
+    const bufferedLines: string[] = [];
+    let bufferStartLine: number | undefined;
+
+    const flushContent = () => {
+      if (bufferedLines.length === 0 || bufferStartLine === undefined) return;
+      parts.push({
+        kind: "content",
+        content: bufferedLines.join(""),
+        startLine: bufferStartLine,
+      });
+      bufferedLines.length = 0;
+      bufferStartLine = undefined;
+    };
+
+    for (const [index, line] of lines.entries()) {
+      const lineNumber = index + 1;
+      const includeMatch = INCLUDE_PATTERN.exec(line.trimEnd());
+
+      if (!includeMatch) {
+        if (bufferStartLine === undefined) bufferStartLine = lineNumber;
+        bufferedLines.push(line);
+        continue;
+      }
+
+      flushContent();
+      parts.push({
+        kind: "include",
+        target: includeMatch[1],
+        line: lineNumber,
+      });
+    }
+
+    flushContent();
+    return parts;
+  },
+};
 
 function createHost(files: Readonly<Record<string, string>>): CompositionHost {
   return {
@@ -25,8 +76,8 @@ function createHost(files: Readonly<Record<string, string>>): CompositionHost {
 }
 
 describe("@spectotal/source-compose", () => {
-  it("keeps composeSingleMarkdownSource as a simple synchronous convenience", () => {
-    const result = composeSingleMarkdownSource(
+  it("keeps composeSingleSource as a simple synchronous convenience", () => {
+    const result = composeSingleSource(
       "fixtures/w3c/single/basic.md",
       "# Title\n",
     );
@@ -38,28 +89,27 @@ describe("@spectotal/source-compose", () => {
         {
           fragmentId: "fixtures/w3c/single/basic.md:0",
           uri: "fixtures/w3c/single/basic.md",
-          format: "markdown",
           content: "# Title\n",
           provenanceChain: [],
         },
       ],
-      includeDirectives: [],
+      includes: [],
     });
   });
 
-  it("expands markdown includes in order with provenance ancestry", async () => {
+  it("splices profile-supplied include parts in order with provenance ancestry", async () => {
     const root = new URL("https://example.test/spec/index.md");
     const host = createHost({
       "https://example.test/spec/index.md":
-        "Intro\n::: include section.md :::\nOutro\n",
+        "Intro\n[[include:section.md]]\nOutro\n",
       "https://example.test/spec/section.md": "## Section\nBody\n",
     });
 
-    const result = await composeMarkdownSourceFromUrl(root, host);
+    const result = await composeSourceFromUrl(root, host, fixtureAdapter);
 
     expect(result.diagnostics).toEqual([]);
     expect(result.source?.entryUri).toBe(root.href);
-    expect(result.source?.includeDirectives).toEqual([
+    expect(result.source?.includes).toEqual([
       {
         sourceUri: root.href,
         targetUri: "https://example.test/spec/section.md",
@@ -70,7 +120,6 @@ describe("@spectotal/source-compose", () => {
       {
         fragmentId: "https://example.test/spec/index.md#fragment-0",
         uri: root.href,
-        format: "markdown",
         content: "Intro\n",
         startLine: 1,
         provenanceChain: [],
@@ -78,7 +127,6 @@ describe("@spectotal/source-compose", () => {
       {
         fragmentId: "https://example.test/spec/section.md#fragment-1",
         uri: "https://example.test/spec/section.md",
-        format: "markdown",
         content: "## Section\nBody\n",
         startLine: 1,
         provenanceChain: [root.href],
@@ -86,7 +134,6 @@ describe("@spectotal/source-compose", () => {
       {
         fragmentId: "https://example.test/spec/index.md#fragment-2",
         uri: root.href,
-        format: "markdown",
         content: "Outro\n",
         startLine: 3,
         provenanceChain: [],
@@ -94,17 +141,18 @@ describe("@spectotal/source-compose", () => {
     ]);
   });
 
-  it("supports already-loaded entry content with the same async host contract", async () => {
+  it("supports already-loaded entry content through a generic adapter", async () => {
     const root = new URL("https://example.test/spec/index.md");
     const host = createHost({
       "https://example.test/spec/part.md": "Part\n",
     });
 
-    const result = await composeMarkdownSource(
+    const result = await composeSource(
       {
         url: root,
-        content: "::: include part.md :::\n",
+        content: "[[include:part.md]]\n",
       },
+      fixtureAdapter,
       host,
     );
 
@@ -113,7 +161,6 @@ describe("@spectotal/source-compose", () => {
       {
         fragmentId: "https://example.test/spec/part.md#fragment-0",
         uri: "https://example.test/spec/part.md",
-        format: "markdown",
         content: "Part\n",
         startLine: 1,
         provenanceChain: [root.href],
@@ -124,17 +171,16 @@ describe("@spectotal/source-compose", () => {
   it("reports include cycles without recursing forever", async () => {
     const root = new URL("https://example.test/spec/index.md");
     const host = createHost({
-      "https://example.test/spec/index.md": "::: include part.md :::\n",
-      "https://example.test/spec/part.md": "::: include index.md :::\n",
+      "https://example.test/spec/index.md": "[[include:part.md]]\n",
+      "https://example.test/spec/part.md": "[[include:index.md]]\n",
     });
 
-    const result = await composeMarkdownSourceFromUrl(root, host);
+    const result = await composeSourceFromUrl(root, host, fixtureAdapter);
 
     expect(result.source?.fragments).toEqual([
       {
         fragmentId: "https://example.test/spec/part.md#fragment-0",
         uri: "https://example.test/spec/part.md",
-        format: "markdown",
         content: "",
         startLine: 1,
         provenanceChain: [root.href],
@@ -153,17 +199,19 @@ describe("@spectotal/source-compose", () => {
     });
   });
 
-  it("reports when includes are present but no async host is provided", async () => {
-    const result = await composeMarkdownSource({
-      url: new URL("https://example.test/spec/index.md"),
-      content: "::: include part.md :::\n",
-    });
+  it("reports when the adapter emits include parts but no host is provided", async () => {
+    const result = await composeSource(
+      {
+        url: new URL("https://example.test/spec/index.md"),
+        content: "[[include:part.md]]\n",
+      },
+      fixtureAdapter,
+    );
 
     expect(result.source?.fragments).toEqual([
       {
         fragmentId: "https://example.test/spec/index.md#fragment-0",
         uri: "https://example.test/spec/index.md",
-        format: "markdown",
         content: "",
         startLine: 1,
         provenanceChain: [],
@@ -173,7 +221,7 @@ describe("@spectotal/source-compose", () => {
       {
         code: "source-compose-host-required",
         severity: "error",
-        message: "Include directive requires a composition host: part.md",
+        message: "Include part requires a composition host: part.md",
         uri: "https://example.test/spec/index.md",
         line: 1,
       },

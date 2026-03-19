@@ -2,7 +2,7 @@
 
 The repository already commits to a markdown-first W3C parsing pipeline, but the concrete implementation is still missing in the places that matter:
 - `@spectotal/profile-w3c` exports a parser surface that currently returns an empty draft document.
-- `@spectotal/source-compose` currently produces only a single-fragment composition and does not expand markdown include directives.
+- `@spectotal/source-compose` currently produces only a single-fragment composition and does not yet expose a profile-guided composition seam.
 - W3C schema and type generation already exist, including generic `flowElement`, `phrasingElement`, and `voidElement` node kinds plus HTML tag classification helpers.
 - W3C assembly behavior is specified separately from parsing, so section hierarchy should not be baked into the first parse pass.
 - The user additionally requires source composition to be isomorphic so the same composition logic can run in browser and server runtimes.
@@ -17,7 +17,7 @@ The change needs to turn those stubs into a real markdown pipeline without viola
 
 **Goals:**
 - Parse composed markdown into W3C draft AST nodes through the `syntax-tree` mdast ecosystem.
-- Expand structural markdown includes before parsing and preserve enough provenance for later W3C assembly.
+- Expand structural markdown includes before parsing through a profile-guided composition seam and preserve enough provenance for later W3C assembly.
 - Keep source composition isomorphic and independent from Node-only filesystem APIs.
 - Support headings, paragraphs, text, structural include directives, and generic HTML/custom tags in the first parser slice.
 - Recover actual tag names and attributes for raw HTML islands when W3C needs generic element nodes.
@@ -103,24 +103,72 @@ Alternatives considered:
 - Encode include ancestry in free-form synthetic strings.
   Rejected because it is brittle and not machine-readable.
 
-### 5. Keep ownership boundaries narrow: source composition in the kernel, syntax/assembly in W3C
+### 5. Keep ownership boundaries narrow: generic composition in the kernel, markdown syntax in W3C
 
-`packages/kernel/source-compose` will own markdown include expansion, fragment ordering, and provenance preservation. `packages/profiles/profile-w3c` will own mdast parsing, directive recognition, raw HTML handling, tag classification, and section assembly. `packages/kernel/ast` will own only the provenance shape needed to carry source ancestry.
+`packages/kernel/source-compose` will own generic recursive composition behavior: host-driven loading, cycle detection, fragment ordering, splice application, and provenance preservation. `packages/profiles/profile-w3c` will own markdown-specific include recognition, mdast parsing, directive recognition, raw HTML handling, tag classification, and section assembly. `packages/kernel/ast` will own only the provenance shape needed to carry source ancestry.
+
+The kernel will no longer scan raw source text for markdown include syntax. Instead, the active profile will provide a composition adapter that splits a loaded document into profile-owned composition parts:
+- content parts: authored source slices that should remain as output fragments
+- include parts: include targets that the kernel should resolve, recurse into, and splice at that position
+
+Planned generic composition seam:
+
+```ts
+export interface CompositionPartContent {
+  readonly kind: "content";
+  readonly content: string;
+  readonly startLine: number;
+}
+
+export interface CompositionPartInclude {
+  readonly kind: "include";
+  readonly target: string;
+  readonly line: number;
+}
+
+export type CompositionPart =
+  | CompositionPartContent
+  | CompositionPartInclude;
+
+export interface CompositionAdapter {
+  readonly name: string;
+  split(source: LoadedSource): Promise<readonly CompositionPart[]>;
+}
+```
+
+The W3C profile will provide the first adapter with a small markdown include scanner for `::: include ... :::`. The kernel composition engine will consume the resulting parts without needing to know markdown, directives, or W3C semantics.
 
 Workspace config, document config, workspace graph, and derivations remain unchanged.
 
 Rationale:
 - It preserves the intended separation between generic composition and profile semantics.
-- It lets later profiles reuse composition behavior without inheriting W3C structure rules.
+- It lets later profiles reuse composition behavior without inheriting W3C syntax rules.
 - It contains new parser dependencies inside the W3C profile package.
 
 Alternatives considered:
-- Let W3C parse include directives directly.
-  Rejected because source composition is already the defined pre-profile stage.
+- Keep markdown include scanning inside the kernel.
+  Rejected because it hardcodes W3C markdown syntax into a generic package and makes the kernel responsible for profile-owned source policy.
+- Let W3C parse include directives only after full mdast parsing.
+  Rejected because composition still needs to happen before profile parsing and assembly.
 - Move provenance-chain logic into W3C-only draft fields.
   Rejected because provenance is not W3C-specific and belongs in the generic AST contract.
 
-### 6. Make source composition pure and loader-driven so it runs in browser and server environments
+### 6. Expose profile-owned composition as a wrapper now and leave full pipeline integration incremental
+
+The immediate refactor will add W3C-owned composition helpers such as `composeW3cSource(...)` and `composeW3cSourceFromUrl(...)` that bind the generic kernel engine to the W3C markdown adapter. This keeps the boundary correct immediately without forcing a larger compiler-pipeline redesign in the same change.
+
+If the wider document pipeline later needs to compose sources through the active profile automatically, `@spectotal/profile-core` can grow an explicit profile-composition surface. This change may add that seam if it remains small, but the core requirement is the boundary correction, not a complete pipeline orchestration layer.
+
+Rationale:
+- It fixes the package boundary now, where the leak already exists.
+- It keeps the current playground and test callers simple.
+- It avoids coupling this boundary refactor to a larger pipeline feature that does not yet exist in the repository.
+
+Alternatives considered:
+- Add a mandatory compiler-wide profile composer hook immediately and refactor all pipeline entrypoints around it.
+  Rejected for now because there is not yet a real central pipeline implementation exercising composition, so the extra indirection would mostly be speculative.
+
+### 7. Make source composition pure and loader-driven so it runs in browser and server environments
 
 The composition core will stay inside `packages/kernel/source-compose`, but it will not assume direct filesystem access. Instead, composition will operate on caller-provided source content and/or a runtime-agnostic async loader/resolver contract that can be implemented in browser, server, tests, or other hosts.
 
@@ -165,7 +213,7 @@ Alternatives considered:
 
 - [Raw HTML behavior is surprising in markdown] → Restrict v1 semantics to explicit HTML-island handling, document the boundary, and add focused fixtures for inline and block HTML cases.
 - [Provenance changes ripple into AST consumers] → Keep the provenance extension additive and update existing callers in the same change.
-- [Include composition plus parser mapping increases cross-package coordination] → Keep source composition generic and constrain profile-specific logic to W3C parsing and assembly.
+- [Include composition plus parser mapping increases cross-package coordination] → Keep source composition generic, move markdown include scanning into W3C, and constrain syntax-specific logic to profile-owned adapters and parsing.
 - [Browser-safe composition limits convenient filesystem assumptions] → Use an injected loader/resolver contract and keep host-specific IO outside the composition core.
 - [Directive support can sprawl into many W3C semantic blocks] → Ship structural include directives first and leave richer semantic containers for follow-up changes.
 - [New parsing dependencies increase footprint] → Keep them profile-local and avoid introducing a shared parser package until reuse is real.
@@ -173,12 +221,13 @@ Alternatives considered:
 ## Migration Plan
 
 1. Extend `@spectotal/ast` provenance types to carry include ancestry in a kernel-agnostic way.
-2. Extend `@spectotal/source-compose` to expand structural markdown includes into ordered fragments with provenance metadata through an isomorphic async loader/resolver contract based on `URL` objects.
+2. Extend `@spectotal/source-compose` into a generic composition engine that consumes profile-supplied composition parts through an isomorphic async loader/resolver contract based on `URL` objects.
 3. Add mdast and selective raw-HTML parsing dependencies to `@spectotal/profile-w3c`.
-4. Implement W3C parse helpers for markdown nodes, include directives, and raw HTML mapping.
-5. Implement W3C assembly/normalization from draft flow into canonical section structure.
-6. Update playground fixtures, examples, and local scenarios for single-document, include, and HTML/container behavior.
-7. Verify package builds and playground parsing examples against the new behavior.
+4. Implement W3C markdown composition helpers that recognize markdown include syntax and bind the W3C adapter to the generic kernel engine.
+5. Implement W3C parse helpers for markdown nodes, directive semantics, and raw HTML mapping.
+6. Implement W3C assembly/normalization from draft flow into canonical section structure.
+7. Update playground fixtures, examples, and local scenarios for single-document, include, and HTML/container behavior.
+8. Verify package builds and playground parsing examples against the new behavior.
 
 Rollback:
 - Revert `@spectotal/profile-w3c` to the existing stub parser and remove the new dependencies if the parser boundary proves unstable.
